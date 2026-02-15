@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+openpyxl
+plotly
+tensorflow
+bcrypt
+pandas
+streamlit-autorefresh
+
+
+
+
+
+
+
