@@ -1,0 +1,33 @@
+services:
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/hefestox/obs}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    command: streamlit run dashboard.py --server.address=0.0.0.0 --server.port=8501
+    environment:
+      DB_PATH: /app/data/mvp_funds.db
+      BOT_LOG_PATH: /app/data/bot.log
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+    ports:
+      - "8501:8501"
+    volumes:
+      - obs_data:/app/data
+    restart: unless-stopped
+
+  bot:
+    image: ${BOT_IMAGE:-ghcr.io/hefestox/obs}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    command: python dashboard.py --bot
+    environment:
+      DB_PATH: /app/data/mvp_funds.db
+      BOT_LOG_PATH: /app/data/bot.log
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+    volumes:
+      - obs_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  obs_data:

@@ -1,0 +1,14 @@
+.git
+.devcontainer
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+mvp_funds.db
+*.db
+bot.log
+*.log
