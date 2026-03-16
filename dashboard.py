@@ -23,6 +23,7 @@
 # =============================================================
 
 import sys
+import os
 
 _raw_argv = sys.argv[1:]
 BOT_MODE = "--bot" in _raw_argv and not any("streamlit" in a for a in _raw_argv)
@@ -38,15 +39,22 @@ import pandas as pd
 
 _DB_LOCK = threading.Lock()
 
+
+def _env_float(name, default):
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return float(value)
+
 # =============================================================
 # ★ CONFIG — EDITE AQUI ★
 # =============================================================
-DB_PATH               = "mvp_funds.db"
-DEFAULT_ADMIN_USER    = "admin"
-DEFAULT_ADMIN_PASS    = "LU87347748"
-DEPOSIT_ADDRESS_FIXED = "TMYvfwaT8XX998h6dP9JVWxgdPxY88cLmt"
-DEPOSIT_NETWORK_LABEL = "TRC20"
-WITHDRAW_FEE_RATE     = 0.05
+DB_PATH               = os.getenv("DB_PATH", "mvp_funds.db")
+DEFAULT_ADMIN_USER    = os.getenv("DEFAULT_ADMIN_USER", "admin")
+DEFAULT_ADMIN_PASS    = os.getenv("DEFAULT_ADMIN_PASS", "LU87347748")
+DEPOSIT_ADDRESS_FIXED = os.getenv("DEPOSIT_ADDRESS_FIXED", "TMYvfwaT8XX998h6dP9JVWxgdPxY88cLmt")
+DEPOSIT_NETWORK_LABEL = os.getenv("DEPOSIT_NETWORK_LABEL", "TRC20")
+WITHDRAW_FEE_RATE     = _env_float("WITHDRAW_FEE_RATE", 0.05)
 
 BOT_SYMBOL            = "BTC/USDT"
 TAKE_PROFIT           = 0.010   # +1.0%
@@ -75,7 +83,8 @@ RSI_EXIT              = 70      # vende se RSI sobrecomprado
 USE_RSI_EXIT          = True    # ativa saída por RSI
 USE_EMA_EXIT          = True    # ativa saída por cruzamento EMA
 
-SESSION_SECRET        = "obspro-mude-essa-chave-2024"
+SESSION_SECRET        = os.getenv("SESSION_SECRET", "obspro-mude-essa-chave-2024")
+BOT_LOG_PATH          = os.getenv("BOT_LOG_PATH", "bot.log")
 
 
 # =============================================================
@@ -831,10 +840,13 @@ def bot_step(user_id):
 
 
 def run_bot_loop():
+    log_dir = os.path.dirname(BOT_LOG_PATH)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler("bot.log", encoding="utf-8"), logging.StreamHandler()]
+        handlers=[logging.FileHandler(BOT_LOG_PATH, encoding="utf-8"), logging.StreamHandler()]
     )
     init_db()
     log = logging.getLogger(__name__)
