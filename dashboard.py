@@ -10,9 +10,7 @@
 # =============================================================
 
 import sys
-import logging.handlers
-
-import sys
+import os
 
 _raw_argv = sys.argv[1:]
 BOT_MODE = "--bot" in _raw_argv and not any("streamlit" in a for a in _raw_argv)
@@ -28,90 +26,52 @@ import pandas as pd
 
 _DB_LOCK = threading.Lock()
 
+
+def _env_float(name, default):
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return float(value)
+
 # =============================================================
 # ★ CONFIG — EDITE AQUI ★
 # =============================================================
-DB_PATH = "mvp_funds.db"
-DEFAULT_ADMIN_USER = "admin"
-DEFAULT_ADMIN_PASS = "LU87347748"
-DEPOSIT_ADDRESS_FIXED = "TMYvfwaT8XX998h6dP9JVWxgdPxY88cLmt"
-DEPOSIT_NETWORK_LABEL = "TRC20"
-WITHDRAW_FEE_RATE = 0.05
+DB_PATH               = os.getenv("DB_PATH", "mvp_funds.db")
+DEFAULT_ADMIN_USER    = os.getenv("DEFAULT_ADMIN_USER", "admin")
+DEFAULT_ADMIN_PASS    = os.getenv("DEFAULT_ADMIN_PASS", "LU87347748")
+DEPOSIT_ADDRESS_FIXED = os.getenv("DEPOSIT_ADDRESS_FIXED", "TMYvfwaT8XX998h6dP9JVWxgdPxY88cLmt")
+DEPOSIT_NETWORK_LABEL = os.getenv("DEPOSIT_NETWORK_LABEL", "TRC20")
+WITHDRAW_FEE_RATE     = _env_float("WITHDRAW_FEE_RATE", 0.05)
 
-ALL_SYMBOLS = [
-    "BTC/USDT",
-    "ETH/USDT",
-]
+BOT_SYMBOL            = "BTC/USDT"
+TAKE_PROFIT           = 0.010   # +1.0%
+STOP_LOSS             = 0.005   # -0.5%
+FEE_RATE_EST          = 0.001
+ORDER_USDT_FRAC       = 0.95
+MIN_USDT_ORDER        = 10.0
+BOT_LOOP_INTERVAL     = 15
+MIN_HOLD_SECONDS      = 300
 
-BOT_SYMBOLS = ALL_SYMBOLS
-BOT_SYMBOL = ALL_SYMBOLS[0]
+# ── Parâmetros de entrada ─────────────────────────────────────
+RSI_PERIOD            = 14
+EMA_FAST              = 9
+EMA_SLOW              = 21
+EMA_TREND             = 200     # EMA200 no H1
+RSI_MIN               = 40
+RSI_MAX               = 65
+CANDLE_INTERVAL       = "5m"
+CANDLE_INTERVAL_H1    = "1h"
+CANDLE_LIMIT          = 50
+CANDLE_LIMIT_H1       = 210     # precisa de 200+ candles para EMA200
+COOLDOWN_AFTER_SL     = 300     # 5 minutos (era 60s)
 
-SYMBOL_ASSET = {
-    "BTC/USDT": "BTC",
-    "ETH/USDT": "ETH",
-}
+# ── Parâmetros de saída inteligente ──────────────────────────
+RSI_EXIT              = 70      # vende se RSI sobrecomprado
+USE_RSI_EXIT          = True    # ativa saída por RSI
+USE_EMA_EXIT          = True    # ativa saída por cruzamento EMA
 
-BANCA_FRAC_POR_PAR = 0.45
-MAX_PARES_SIMULTANEOS = 2
-
-TAKE_PROFIT = 0.0070
-STOP_LOSS   = 0.0035
-
-FEE_RATE_EST = 0.001
-ORDER_USDT_FRAC = 0.95
-MIN_USDT_ORDER = 10.0
-USDT_PER_SYMBOL = 20.0
-MIN_DEPOSIT_TO_ACTIVATE = 0.0   # v5.0.0: desativado — sem bloqueio por saldo
-TRADE_FEE = 0.50                # taxa por operação cobrada na VENDA
-BOT_LOOP_INTERVAL = 15
-MIN_HOLD_SECONDS = 900
-
-RSI_PERIOD = 14
-EMA_FAST = 9
-EMA_SLOW = 21
-EMA_TREND = 200
-RSI_MIN = 48
-RSI_MAX = 58
-CANDLE_INTERVAL = "5m"
-CANDLE_INTERVAL_H1 = "1h"
-CANDLE_LIMIT = 50
-CANDLE_LIMIT_H1 = 210
-COOLDOWN_AFTER_SL = 1200
-
-ATR_PERIOD = 14
-ATR_MIN_PCT = 0.0010
-EMA_TREND_4H = 50
-USE_ATR_FILTER = True
-USE_4H_FILTER = True
-
-# ── v4.9.3 — filtros de entrada relaxados ────────────────────
-MACD_LINE_MIN = -5.0
-USE_RSI_ENTRY = True
-RSI_ENTRY_MIN = 45
-RSI_ENTRY_MAX = 65
-
-# ── v4.9.4 ───────────────────────────────────────────────────
-USE_EMA_EXIT = False
-USE_TIME_FILTER = False
-TRADE_HOUR_START = 1
-TRADE_HOUR_END = 15
-
-USE_TRAILING_STOP = True
-TRAILING_ACTIVATION = 0.0035
-TRAILING_DISTANCE = 0.0025
-
-RSI_EXIT = 70
-USE_RSI_EXIT = True
-
-USE_ENGULFING_PATTERN = False
-USE_DOUBLE_ENGULFING_PATTERN = False
-USE_OUTSIDE_BAR_PATTERN = False
-USE_CANDLESTICK_CONFIRM = False
-
-SESSION_SECRET = "obspro-mude-essa-chave-2024"
-
-# ── v5.0.0 — cache de exchange ────────────────────────────────
-EXCHANGE_REBUILD_INTERVAL = 3600  # reconstrói a cada 1h
+SESSION_SECRET        = os.getenv("SESSION_SECRET", "obspro-mude-essa-chave-2024")
+BOT_LOG_PATH          = os.getenv("BOT_LOG_PATH", "bot.log")
 
 
 # =============================================================
@@ -1251,15 +1211,13 @@ def bot_step(user_id, symbol="BTC/USDT", exchange=None):
 
 
 def run_bot_loop():
+    log_dir = os.path.dirname(BOT_LOG_PATH)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.handlers.RotatingFileHandler(
-                "bot.log", maxBytes=5*1024*1024, backupCount=2, encoding="utf-8"
-            ),
-            logging.StreamHandler()
-        ]
+        handlers=[logging.FileHandler(BOT_LOG_PATH, encoding="utf-8"), logging.StreamHandler()]
     )
     init_db()
     log = logging.getLogger(__name__)

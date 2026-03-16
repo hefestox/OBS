@@ -13,6 +13,7 @@ services:
       - "8501:8501"
     volumes:
       - obs_data:/app/data
+      - .:/project:cached
     restart: unless-stopped
 
   bot:
@@ -27,6 +28,7 @@ services:
       DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
     volumes:
       - obs_data:/app/data
+      - .:/project:cached
     restart: unless-stopped
 
 volumes:
