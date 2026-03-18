@@ -32,3 +32,5 @@ dist/
 .vscode/
 .idea/
 .DS_Store
+/mvp_funds.db
+/paper_trades.csv
