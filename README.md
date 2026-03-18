@@ -40,9 +40,9 @@ docker compose down
 
 Banco SQLite (`mvp_funds.db`) e log (`bot.log`) ficam no volume nomeado `obs_data` em `/app/data`.
 
-## Deploy em VPS via GitHub Actions + GHCR
+## Publicacao de imagem via GitHub Actions + GHCR
 
-O workflow `.github/workflows/main.yml` é disparado em push na branch `Test` e executa:
+O workflow `.github/workflows/main.yml` e disparado em push na branch `main` e executa:
 
 1. **build_and_push**
    - `docker/setup-buildx-action`
@@ -50,22 +50,28 @@ O workflow `.github/workflows/main.yml` é disparado em push na branch `Test` e 
    - `docker/build-push-action` publicando:
       - `ghcr.io/<owner>/<repo>:latest`
       - `ghcr.io/<owner>/<repo>:<sha>`
-2. **deploy** (com `needs: [build_and_push]`)
-   - Acesso SSH na VPS
-   - `docker login ghcr.io`
-   - `docker compose pull`
-   - `docker compose up -d`
+
+O deploy da stack nao e feito pelo GitHub Actions. A atualizacao da aplicacao deve ser feita pelo Portainer, consumindo a imagem publicada no GHCR.
 
 ### Secrets necessários no GitHub
 
-- `SSH_HOST`
-- `SSH_USER`
-- `SSH_PRIVATE_KEY`
-- `GHCR_USERNAME`
-- `GHCR_TOKEN`
+- nenhum secret adicional e necessario para o push no GHCR alem do `GITHUB_TOKEN` fornecido pelo proprio GitHub Actions
 
-### Pré-requisitos na VPS
+### Pré-requisitos no Portainer / Swarm
 
-- Repositório disponível em `/app/OBS` com `docker-compose.yml`
-- Docker e Docker Compose instalados
-- Arquivo `.env` presente com as variáveis obrigatórias
+- registry `ghcr.io` configurado no Portainer, se a imagem for privada
+- stack configurada a partir de `docker-stack.yml`, usando `ghcr.io/<owner>/<repo>:latest` ou uma tag SHA especifica
+- variaveis obrigatorias da aplicacao preenchidas no Portainer
+
+### Arquivo recomendado para stack
+
+Use `docker-stack.yml` para deploy no Docker Swarm via Portainer.
+
+Variaveis esperadas pela stack:
+
+- `SWARM_NODE_HOSTNAME`
+- `SESSION_SECRET`
+- `DEFAULT_ADMIN_USER`
+- `DEFAULT_ADMIN_PASS`
+- `IMAGE_TAG` opcional, com padrao `latest`
+- `OBS_IMAGE` opcional, com padrao `ghcr.io/hefestox/obs`

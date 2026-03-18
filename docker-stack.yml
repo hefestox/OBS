@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  web:
+    image: ${OBS_IMAGE:-ghcr.io/hefestox/obs}:${IMAGE_TAG:-latest}
+    command: streamlit run dashboard.py --server.address=0.0.0.0 --server.port=8501
+    environment:
+      DB_PATH: /app/data/mvp_funds.db
+      BOT_LOG_PATH: /app/data/bot.log
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+    ports:
+      - target: 8501
+        published: 8501
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - obs_data:/app/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == ${SWARM_NODE_HOSTNAME:?SWARM_NODE_HOSTNAME is required}
+
+  bot:
+    image: ${OBS_IMAGE:-ghcr.io/hefestox/obs}:${IMAGE_TAG:-latest}
+    command: python dashboard.py --bot
+    environment:
+      DB_PATH: /app/data/mvp_funds.db
+      BOT_LOG_PATH: /app/data/bot.log
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+    volumes:
+      - obs_data:/app/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == ${SWARM_NODE_HOSTNAME:?SWARM_NODE_HOSTNAME is required}
+
+volumes:
+  obs_data:
+    driver: local

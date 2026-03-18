@@ -1,4 +1,4 @@
-name: Testes Pytest
+name: Validacoes Basicas
 
 on:
   pull_request:
@@ -6,55 +6,9 @@ on:
     branches: ["main", "Test"]
 
 jobs:
-  pytest:
+  validate:
+    name: Validate Python App
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_DB: imac_test
-          POSTGRES_USER: imac
-          POSTGRES_PASSWORD: imac
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U imac -d imac_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DJANGO_SETTINGS_MODULE: settup.settings
-      DOMAIN_FRONT: http://localhost:3000
-      DOMAIN_BACK: http://localhost:8000
-      DOMAIN: localhost
-      DJANGO_TIMEZONE: America/Manaus
-      DJANGO_LANGUAGE_CODE: pt-br
-      POSTGRES_ENGINE: django.contrib.gis.db.backends.postgis
-      POSTGRES_DB: imac_test
-      POSTGRES_USER: imac
-      POSTGRES_PASSWORD: imac
-      POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: 5432
-      POSTGRES_ATOMIC_REQUESTS: "True"
-      SECRET_KEY: test-secret-key
-      EMAIL_HOST: localhost
-      EMAIL_PORT: 1025
-      EMAIL_HOST_USER: test@example.com
-      EMAIL_HOST_PASSWORD: test
-      EMAIL_USE_TLS: "False"
-      DEFAULT_FROM_EMAIL: test@example.com
-      DJANGO_DEBUG: "True"
 
     steps:
       - name: Checkout
@@ -65,34 +19,20 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev binutils
-
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-django pytest-cov pytest-factoryboy factory-boy
 
-      - name: Migrate database
-        run: python manage.py migrate --noinput
+      - name: Validate Python syntax
+        run: python -m compileall CookieManager.py dashboard.py
 
-      - name: Unit tests
-        run: pytest -m "unit and not slow" -q
+      - name: Smoke test imports
+        run: python - <<'PY'
+          import CookieManager
+          import dashboard
+          print("Imports ok")
+          PY
 
-      - name: Security tests
-        run: pytest -m "security" -q
-
-      - name: Integration tests (real_db)
-        run: pytest -m "integration and real_db" -q
-
-      - name: Report and regression tests
-        run: pytest -m "report or regression" -q
-
-      - name: WebSocket tests
-        run: pytest -m "ws" -q
-
-      - name: Coverage gate
-        run: pytest --cov=imac --cov-report=xml --cov-fail-under=92
+      - name: Validate Docker build
+        run: docker build -t obs-ci:test .
