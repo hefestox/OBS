@@ -1264,7 +1264,7 @@ def run_bot_loop():
     init_db()
     log = logging.getLogger(__name__)
     log.info("=" * 60)
-    log.info("  OBS PRO BOT v5.0.0 — TODAS AS CORREÇÕES")
+    log.info("  OBS PRO BOT v5.0.1 — TODAS AS CORREÇÕES")
     log.info(f"  Pares: {', '.join(BOT_SYMBOLS)}")
     log.info(f"  TP: {TAKE_PROFIT * 100:.2f}% | SL: {STOP_LOSS * 100:.2f}% | R:R 2:1")
     log.info(f"  ENTRADA: MACD linha > 0 + RSI {RSI_ENTRY_MIN}-{RSI_ENTRY_MAX} + EMA{EMA_TREND} H1 + EMA50 4H")
@@ -1378,7 +1378,7 @@ except:
     HAS_AUTOREFRESH = False
 
 init_db()
-st.set_page_config(page_title="OBS PRO — BOT v5.0.0", layout="wide")
+st.set_page_config(page_title="OBS PRO — BOT v5.0.1", layout="wide")
 
 
 def fetch_price_display(symbol):
