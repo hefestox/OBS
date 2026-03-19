@@ -45,5 +45,4 @@ jobs:
 
       - name: Trigger Portainer stack update
         run: |
-          curl -fsSLk -X POST \
-            "https://obs.solicitarsuporte.com.br:9443/api/stacks/webhooks/0c843920-fbfa-4d78-b837-773c2511b34b"
+          curl -fsSLk -X POST "${{ vars.WEBHOOK_URL }}"
