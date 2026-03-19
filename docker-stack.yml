@@ -7,9 +7,9 @@ services:
     environment:
       DB_PATH: /app/data/mvp_funds.db
       BOT_LOG_PATH: /app/data/bot.log
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
-      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
-      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+      SESSION_SECRET: ${SESSION_SECRET}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS}
     ports:
       - target: 8501
         published: 8501
@@ -23,7 +23,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname == ${SWARM_NODE_HOSTNAME:?SWARM_NODE_HOSTNAME is required}
+          - node.hostname == ${SWARM_NODE_HOSTNAME}
 
   bot:
     image: ${OBS_IMAGE:-ghcr.io/hefestox/obs}:${IMAGE_TAG:-latest}
@@ -31,9 +31,9 @@ services:
     environment:
       DB_PATH: /app/data/mvp_funds.db
       BOT_LOG_PATH: /app/data/bot.log
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
-      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:?DEFAULT_ADMIN_USER is required}
-      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS:?DEFAULT_ADMIN_PASS is required}
+      SESSION_SECRET: ${SESSION_SECRET}
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER}
+      DEFAULT_ADMIN_PASS: ${DEFAULT_ADMIN_PASS}
     volumes:
       - obs_data:/app/data
     deploy:
@@ -42,7 +42,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname == ${SWARM_NODE_HOSTNAME:?SWARM_NODE_HOSTNAME is required}
+          - node.hostname == ${SWARM_NODE_HOSTNAME}
 
 volumes:
   obs_data:
