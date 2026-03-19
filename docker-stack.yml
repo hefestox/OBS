@@ -22,7 +22,7 @@ services:
       restart_policy:
         condition: any
       limits:
-        cpus: '0.5'
+        cpus: '0.2'
         memory: 1024M
       placement:
         constraints:
@@ -44,7 +44,7 @@ services:
       restart_policy:
         condition: any
       limits:
-        cpus: '0.5'
+        cpus: '0.2'
         memory: 1024M
       placement:
         constraints:
