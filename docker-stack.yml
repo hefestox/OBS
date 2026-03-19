@@ -21,6 +21,9 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+      limits:
+        cpus: '0.5'
+        memory: 1024M
       placement:
         constraints:
           - node.hostname == ${SWARM_NODE_HOSTNAME}
@@ -40,6 +43,9 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+      limits:
+        cpus: '0.5'
+        memory: 1024M
       placement:
         constraints:
           - node.hostname == ${SWARM_NODE_HOSTNAME}
