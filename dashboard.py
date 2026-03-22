@@ -9,10 +9,9 @@
 #   ✅ Log com rotação automática (5MB)
 # =============================================================
 
+import os
 import sys
 import logging.handlers
-
-import sys
 
 _raw_argv = sys.argv[1:]
 BOT_MODE = "--bot" in _raw_argv and not any("streamlit" in a for a in _raw_argv)
@@ -20,9 +19,11 @@ BOT_MODE = "--bot" in _raw_argv and not any("streamlit" in a for a in _raw_argv)
 import sqlite3
 import hashlib
 import time
+import secrets
 import logging
 import threading
 import requests
+import bcrypt
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -32,8 +33,9 @@ _DB_LOCK = threading.Lock()
 # ★ CONFIG — EDITE AQUI ★
 # =============================================================
 DB_PATH = "mvp_funds.db"
+DB_PATH = os.environ.get("DB_PATH", DB_PATH)
 DEFAULT_ADMIN_USER = "admin"
-DEFAULT_ADMIN_PASS = "LU87347748"
+DEFAULT_ADMIN_PASS = os.environ.get("DEFAULT_ADMIN_PASS", "")
 DEPOSIT_ADDRESS_FIXED = "TMYvfwaT8XX998h6dP9JVWxgdPxY88cLmt"
 DEPOSIT_NETWORK_LABEL = "TRC20"
 WITHDRAW_FEE_RATE = 0.05
@@ -108,7 +110,7 @@ USE_DOUBLE_ENGULFING_PATTERN = False
 USE_OUTSIDE_BAR_PATTERN = False
 USE_CANDLESTICK_CONFIRM = False
 
-SESSION_SECRET = "obspro-mude-essa-chave-2024"
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
 
 # ── v5.0.0 — cache de exchange ────────────────────────────────
 EXCHANGE_REBUILD_INTERVAL = 3600  # reconstrói a cada 1h
@@ -129,6 +131,35 @@ def db():
 def sha256(s): return hashlib.sha256(s.encode()).hexdigest()
 def make_code(u): return sha256(u + "|code")[:8]
 def _now(): return datetime.now().isoformat(sep=" ", timespec="seconds")
+
+
+def _is_production_env():
+    env = (os.environ.get("APP_ENV") or os.environ.get("ENV") or "").strip().lower()
+    return env in {"prod", "production"}
+
+
+def _resolve_initial_admin_password():
+    if DEFAULT_ADMIN_PASS:
+        return DEFAULT_ADMIN_PASS
+    if _is_production_env():
+        raise RuntimeError("DEFAULT_ADMIN_PASS é obrigatório em produção.")
+    generated = secrets.token_urlsafe(24)
+    logging.warning("DEFAULT_ADMIN_PASS não definido; senha admin inicial temporária gerada para ambiente não-produção.")
+    return generated
+
+
+def is_bcrypt_hash(pass_hash):
+    return isinstance(pass_hash, str) and pass_hash.startswith(("$2a$", "$2b$", "$2y$"))
+
+
+def hash_password(password):
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password, stored_hash):
+    if is_bcrypt_hash(stored_hash):
+        return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+    return sha256(password) == stored_hash
 
 
 def init_db():
@@ -249,8 +280,9 @@ def init_db():
 
         cur.execute("SELECT id FROM users WHERE username=?", (DEFAULT_ADMIN_USER,))
         if not cur.fetchone():
+            admin_pass = _resolve_initial_admin_password()
             cur.execute("INSERT INTO users (username,pass_hash,role,created_at,my_code) VALUES (?,?,?,?,?)",
-                        (DEFAULT_ADMIN_USER, sha256(DEFAULT_ADMIN_PASS), "admin", _now(),
+                        (DEFAULT_ADMIN_USER, hash_password(admin_pass), "admin", _now(),
                          make_code(DEFAULT_ADMIN_USER)))
             conn.commit()
         conn.close()
@@ -273,8 +305,25 @@ def get_user_by_id(user_id):
 
 
 def auth(username, password):
-    u = get_user_by_username(username.strip())
-    return u if u and sha256(password) == u[2] else None
+    username = username.strip()
+    if not username or password is None:
+        return None
+    with _DB_LOCK:
+        conn = db(); cur = conn.cursor()
+        cur.execute("SELECT id,username,pass_hash,role,created_at,referrer_code,my_code FROM users WHERE username=?",
+                    (username,))
+        u = cur.fetchone()
+        if not u:
+            conn.close(); return None
+        if not verify_password(password, u[2]):
+            conn.close(); return None
+        if not is_bcrypt_hash(u[2]):
+            new_hash = hash_password(password)
+            cur.execute("UPDATE users SET pass_hash=? WHERE id=?", (new_hash, u[0]))
+            conn.commit()
+            u = (u[0], u[1], new_hash, u[3], u[4], u[5], u[6])
+        conn.close()
+        return u
 
 
 def create_user(username, password, role, referrer_code=None):
@@ -288,7 +337,7 @@ def create_user(username, password, role, referrer_code=None):
         try:
             cur.execute(
                 "INSERT INTO users (username,pass_hash,role,created_at,referrer_code,my_code) VALUES (?,?,?,?,?,?)",
-                (username, sha256(password), role, _now(),
+                (username, hash_password(password), role, _now(),
                  referrer_code.strip() if referrer_code else None, make_code(username)))
             conn.commit()
         except sqlite3.IntegrityError:
@@ -304,7 +353,7 @@ def list_users():
 
 
 def create_session(user_id):
-    token = sha256(f"{user_id}|{time.time()}|{SESSION_SECRET}")
+    token = secrets.token_urlsafe(48)
     expires = (datetime.now() + timedelta(days=30)).isoformat(sep=" ", timespec="seconds")
     with _DB_LOCK:
         conn = db(); cur = conn.cursor()
@@ -367,6 +416,11 @@ def add_ledger(user_id, kind, amount_usdt, ref_table=None, ref_id=None):
         conn.commit(); conn.close()
 
 
+def _add_ledger_tx(cur, user_id, kind, amount_usdt, ref_table=None, ref_id=None):
+    cur.execute("INSERT INTO ledger (user_id,kind,amount_usdt,ref_table,ref_id,created_at) VALUES (?,?,?,?,?,?)",
+                (user_id, kind, float(amount_usdt), ref_table, ref_id, _now()))
+
+
 def user_balance(user_id):
     with _DB_LOCK:
         conn = db(); cur = conn.cursor()
@@ -423,41 +477,70 @@ def desativar_bot_usuario(user_id):
 
 
 def admin_review_deposit(deposit_id, approve, admin_id, note=""):
+    should_activate = False
+    bal_total = 0.0
+    user_id = None
     with _DB_LOCK:
-        conn = db(); cur = conn.cursor()
-        cur.execute("SELECT user_id,amount_usdt,status FROM deposits WHERE id=?", (deposit_id,))
-        row = cur.fetchone()
-        if not row: conn.close(); raise ValueError("Depósito não encontrado.")
-        user_id, amt, status = row
-        if status != "PENDING": conn.close(); raise ValueError("Já revisado.")
-        new_status = "APPROVED" if approve else "REJECTED"
-        cur.execute("UPDATE deposits SET status=?,reviewed_at=?,reviewed_by=?,note=? WHERE id=?",
-                    (new_status, _now(), admin_id, note, deposit_id))
-        conn.commit(); conn.close()
-    if approve:
-        add_ledger(user_id, "DEPOSIT", float(amt), "deposits", deposit_id)
-        bal_total = user_balance(user_id)
-        has_keys = get_user_keys(user_id) is not None
-        if has_keys:
-            ativar_bot_usuario(user_id)
-            logging.info(f"[admin] Bot ativado automaticamente para user {user_id} | saldo={bal_total:.2f}")
+        conn = db()
+        try:
+            cur = conn.cursor()
+            cur.execute("BEGIN IMMEDIATE")
+            cur.execute("SELECT user_id,amount_usdt,status FROM deposits WHERE id=?", (deposit_id,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("Depósito não encontrado.")
+            user_id, amt, status = row
+            if status != "PENDING":
+                raise ValueError("Já revisado.")
+            new_status = "APPROVED" if approve else "REJECTED"
+            cur.execute("UPDATE deposits SET status=?,reviewed_at=?,reviewed_by=?,note=? WHERE id=?",
+                        (new_status, _now(), admin_id, note, deposit_id))
+            if approve:
+                _add_ledger_tx(cur, user_id, "DEPOSIT", float(amt), "deposits", deposit_id)
+                cur.execute("SELECT COALESCE(SUM(amount_usdt),0) FROM ledger WHERE user_id=?", (user_id,))
+                bal_total = float(cur.fetchone()[0] or 0)
+                cur.execute("SELECT 1 FROM user_keys WHERE user_id=?", (user_id,))
+                should_activate = cur.fetchone() is not None
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    if approve and should_activate:
+        ativar_bot_usuario(user_id)
+        logging.info(f"[admin] Bot ativado automaticamente para user {user_id} | saldo={bal_total:.2f}")
 
 
 def create_withdrawal(user_id, amount_usdt, network, address):
-    bal = user_balance(user_id)
     if amount_usdt <= 0: raise ValueError("Valor inválido.")
-    if amount_usdt > bal: raise ValueError(f"Saldo insuficiente: {bal:.2f} USDT")
     if not network.strip() or not address.strip(): raise ValueError("Rede e endereço obrigatórios.")
     fee = amount_usdt * WITHDRAW_FEE_RATE
     net = amount_usdt - fee
     with _DB_LOCK:
-        conn = db(); cur = conn.cursor()
-        cur.execute("""INSERT INTO withdrawals
-            (user_id,amount_request_usdt,fee_rate,fee_usdt,amount_net_usdt,network,address,status,created_at)
-            VALUES (?,?,?,?,?,?,?,?,?)""",
-                    (user_id, float(amount_usdt), float(WITHDRAW_FEE_RATE), float(fee),
-                     float(net), network.strip(), address.strip(), "PENDING", _now()))
-        conn.commit(); conn.close()
+        conn = db()
+        try:
+            cur = conn.cursor()
+            cur.execute("BEGIN IMMEDIATE")
+            cur.execute("SELECT COALESCE(SUM(amount_usdt),0) FROM ledger WHERE user_id=?", (user_id,))
+            bal = float(cur.fetchone()[0] or 0)
+            cur.execute("SELECT COALESCE(SUM(amount_request_usdt),0) FROM withdrawals WHERE user_id=? AND status='PENDING'",
+                        (user_id,))
+            pending = float(cur.fetchone()[0] or 0)
+            available = bal - pending
+            if amount_usdt > available:
+                raise ValueError(f"Saldo insuficiente: {available:.2f} USDT")
+            cur.execute("""INSERT INTO withdrawals
+                (user_id,amount_request_usdt,fee_rate,fee_usdt,amount_net_usdt,network,address,status,created_at)
+                VALUES (?,?,?,?,?,?,?,?,?)""",
+                        (user_id, float(amount_usdt), float(WITHDRAW_FEE_RATE), float(fee),
+                         float(net), network.strip(), address.strip(), "PENDING", _now()))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 def list_withdrawals(user_id=None):
@@ -476,17 +559,28 @@ def list_withdrawals(user_id=None):
 
 def admin_review_withdrawal(wid, approve, admin_id, note=""):
     with _DB_LOCK:
-        conn = db(); cur = conn.cursor()
-        cur.execute("SELECT user_id,amount_request_usdt,status FROM withdrawals WHERE id=?", (wid,))
-        row = cur.fetchone()
-        if not row: conn.close(); raise ValueError("Saque não encontrado.")
-        user_id, amt, status = row
-        if status != "PENDING": conn.close(); raise ValueError("Já revisado.")
-        new_status = "APPROVED" if approve else "REJECTED"
-        cur.execute("UPDATE withdrawals SET status=?,reviewed_at=?,reviewed_by=?,note=? WHERE id=?",
-                    (new_status, _now(), admin_id, note, wid))
-        conn.commit(); conn.close()
-    if approve: add_ledger(user_id, "WITHDRAWAL", -float(amt), "withdrawals", wid)
+        conn = db()
+        try:
+            cur = conn.cursor()
+            cur.execute("BEGIN IMMEDIATE")
+            cur.execute("SELECT user_id,amount_request_usdt,status FROM withdrawals WHERE id=?", (wid,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("Saque não encontrado.")
+            user_id, amt, status = row
+            if status != "PENDING":
+                raise ValueError("Já revisado.")
+            new_status = "APPROVED" if approve else "REJECTED"
+            cur.execute("UPDATE withdrawals SET status=?,reviewed_at=?,reviewed_by=?,note=? WHERE id=?",
+                        (new_status, _now(), admin_id, note, wid))
+            if approve:
+                _add_ledger_tx(cur, user_id, "WITHDRAWAL", -float(amt), "withdrawals", wid)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 def admin_mark_withdraw_paid(wid, admin_id, paid_txid, note=""):
