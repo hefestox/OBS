@@ -1,0 +1,114 @@
+name: Issue Triage Automation
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+jobs:
+  auto-label-by-template:
+    name: Auto Label by Template
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add labels based on template
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const labels = [];
+            
+            // Label base para todas as issues
+            labels.push('needs-triage');
+            
+            // Detecta tipo baseado no título
+            const title = issue.title.toLowerCase();
+            
+            if (title.includes('[feature]') || title.includes('[feat]')) {
+              labels.push('enhancement', 'feature');
+            } else if (title.includes('[bug]')) {
+              labels.push('bug');
+            } else if (title.includes('[tech]')) {
+              labels.push('technical');
+            } else if (title.includes('[doc]')) {
+              labels.push('documentation');
+            } else if (title.includes('[test]')) {
+              labels.push('testing', 'quality');
+            }
+            
+            // Detecta prioridade no corpo da issue
+            if (body.includes('P0') || body.includes('Crítica')) {
+              labels.push('P0-critical');
+            } else if (body.includes('P1') || body.includes('Alta')) {
+              labels.push('P1-high');
+            } else if (body.includes('P2') || body.includes('Média')) {
+              labels.push('P2-medium');
+            } else if (body.includes('P3') || body.includes('Baixa')) {
+              labels.push('P3-low');
+            }
+            
+            // Detecta area do pacote
+            const areas = {
+              'Agents': 'area:agents',
+              'Skills': 'area:skills',
+              'Templates': 'area:templates',
+              'Memória': 'area:memory',
+              'Memoria': 'area:memory',
+              'Workflows': 'area:workflows',
+              'Documentação': 'area:docs',
+              'Documentacao': 'area:docs',
+              'Governança': 'area:governance',
+              'Governanca': 'area:governance',
+              'Package-wide': 'area:package'
+            };
+            
+            for (const [name, label] of Object.entries(areas)) {
+              if (body.includes(name)) {
+                labels.push(label);
+                break;
+              }
+            }
+            
+            // Adiciona as labels
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }
+
+  onboarding-comment:
+    name: Add Triage Guidance Comment
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    permissions:
+      issues: write
+    steps:
+      - name: Add comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const comment = `🎯 **Issue registrada com sucesso**
+            
+            Esta issue foi automaticamente marcada para triagem inicial.
+            
+            **Próximos passos:**
+            1. Revisar escopo, impacto e artefatos afetados
+            2. Confirmar se a mudança é local ou estrutural
+            3. Alinhar a issue com a governança do pacote antes de executar
+            
+            **Leituras úteis:**
+            - README: https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/README.md
+            - ONBOARD: https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/ONBOARD.md
+            - CONTRIBUTING: https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CONTRIBUTING.md`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: comment
+            });

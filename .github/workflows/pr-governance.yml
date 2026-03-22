@@ -1,0 +1,538 @@
+name: PR Governance
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+jobs:
+  validate-gitflow-commits-and-title:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Gitflow branch naming
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -e
+          echo "$HEAD_REF" | grep -Eq '^(feature|release|hotfix|support)/[a-z0-9._-]+$'
+
+      - name: Validate semantic commits in PR
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -e
+          git fetch origin "$BASE_REF" --depth=1
+          COMMITS=$(git log --format=%s "origin/$BASE_REF..$HEAD_SHA")
+          echo "$COMMITS" | while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "$line" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'
+          done
+
+      - name: Validate semantic PR title
+        id: validate_pr_title
+        continue-on-error: true
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -e
+          echo "$PR_TITLE" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'
+
+      - name: Remove stale PR title guidance comment
+        if: steps.validate_pr_title.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- semantic-pr-title-guidance -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+
+            const comment = comments.find(item => item.body && item.body.includes(marker));
+            if (comment) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id
+              });
+            }
+
+      - name: Comment when PR title is invalid
+        if: steps.validate_pr_title.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- semantic-pr-title-guidance -->';
+            const body = [
+              marker,
+              '⚠️ **Titulo do Pull Request fora do padrao semantico**',
+              '',
+              'Use o formato `tipo(escopo-opcional): resumo objetivo`.',
+              '',
+              'Exemplos validos:',
+              '- `feat(workflows): adiciona validacao de titulo do PR`',
+              '- `docs(readme): atualiza guia de contribuicao`',
+              '- `fix(agents): corrige regra de handoff`'
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+
+            const comment = comments.find(item => item.body && item.body.includes(marker));
+
+            if (comment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+                body
+              });
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body
+            });
+
+      - name: Fail when PR title is invalid
+        if: steps.validate_pr_title.outcome == 'failure'
+        run: |
+          echo "PR title must follow semantic format: tipo(escopo-opcional): resumo objetivo"
+          exit 1
+
+  sync-review-state:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    env:
+      PR_REVIEWERS: ${{ vars.PR_REVIEWERS }}
+      PR_REVIEW_TEAM_SLUGS: ${{ vars.PR_REVIEW_TEAM_SLUGS }}
+    steps:
+      - name: Sync PR review labels and request review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            const reviewStateLabels = ['review-approved', 'review-changes-requested', 'review-commented', 'review-dismissed'];
+            const issueReviewLabels = ['needs-review', 'in-review', ...reviewStateLabels];
+            const issueRegex = /#(\d+)|(?:fix(?:es)?|close(?:s)?|resolve(?:s)?)\s+#(\d+)/gi;
+            const linkCommentMarker = '<!-- linked-issue-guidance -->';
+            const reviewStateCommentMarker = '<!-- linked-issue-review-state -->';
+            const prReviewStateCommentMarker = '<!-- pr-review-state -->';
+
+            function getLinkedIssueNumbers() {
+              const body = pr.body || '';
+              const title = pr.title || '';
+              const matches = [...body.matchAll(issueRegex), ...title.matchAll(issueRegex)];
+              return [...new Set(matches.map(match => parseInt(match[1] || match[2], 10)).filter(Number.isInteger))];
+            }
+
+            function getIssueReviewState(labels) {
+              if (labels.includes('review-changes-requested')) {
+                return 'review-changes-requested';
+              }
+
+              if (labels.includes('review-approved')) {
+                return 'review-approved';
+              }
+
+              if (labels.includes('review-commented')) {
+                return 'review-commented';
+              }
+
+              if (labels.includes('review-dismissed')) {
+                return 'review-dismissed';
+              }
+
+              if (labels.includes('in-review')) {
+                return 'in-review';
+              }
+
+              if (labels.includes('needs-review')) {
+                return 'needs-review';
+              }
+
+              return 'none';
+            }
+
+            function buildIssueStateComment(state, issueNumber) {
+              const messages = {
+                'needs-review': `🔄 Estado de revisão sincronizado com o PR #${pr.number}: aguardando revisão formal (\`needs-review\`).`,
+                'in-review': `👀 Estado de revisão sincronizado com o PR #${pr.number}: revisão em andamento (\`in-review\`).`,
+                'review-approved': `✅ Estado de revisão sincronizado com o PR #${pr.number}: revisão aprovada (\`review-approved\`).`,
+                'review-changes-requested': `🛠️ Estado de revisão sincronizado com o PR #${pr.number}: alterações solicitadas (\`review-changes-requested\`).`,
+                'review-commented': `💬 Estado de revisão sincronizado com o PR #${pr.number}: comentários ativos sem aprovação ou bloqueio (\`review-commented\`).`,
+                'review-dismissed': `↩️ Estado de revisão sincronizado com o PR #${pr.number}: revisão dismissada e fila de revisão reaberta (\`review-dismissed\`).`,
+                'merged': `✅ Pull Request #${pr.number} foi mergeado e a issue foi concluída automaticamente (\`done\`).`,
+                'closed-without-merge': `ℹ️ Pull Request #${pr.number} foi fechado sem merge e os labels de revisão foram removidos.`
+              };
+
+              return [
+                reviewStateCommentMarker,
+                `<!-- issue:${issueNumber} -->`,
+                messages[state]
+              ].join('\n');
+            }
+
+            function buildPrStateComment(state) {
+              const messages = {
+                'review-approved': `✅ Estado de review atualizado: este PR está aprovado (\`review-approved\`).`,
+                'review-changes-requested': `🛠️ Estado de review atualizado: este PR tem alterações solicitadas (\`review-changes-requested\`).`,
+                'review-commented': `💬 Estado de review atualizado: este PR tem comentários ativos sem aprovação ou bloqueio (\`review-commented\`).`,
+                'review-dismissed': `↩️ Estado de review atualizado: a revisão anterior foi dismissada e este PR voltou para a fila de revisão (\`review-dismissed\`).`
+              };
+
+              return [
+                prReviewStateCommentMarker,
+                messages[state]
+              ].join('\n');
+            }
+
+            async function getCurrentLabels(issueNumber) {
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+
+              return issue.labels.map(label => label.name);
+            }
+
+            async function upsertIssueComment(issueNumber, marker, body) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                per_page: 100
+              });
+
+              const existingComment = comments.find(comment => comment.body && comment.body.includes(marker));
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body
+                });
+                return;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body
+              });
+            }
+
+            async function upsertPrLinkComment(linkedIssues) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100
+              });
+
+              const existingComment = comments.find(comment => comment.body && comment.body.includes(linkCommentMarker));
+
+              if (linkedIssues.length === 0) {
+                const body = [
+                  linkCommentMarker,
+                  '⚠️ **Nenhuma issue vinculada detectada**',
+                  '',
+                  'Para vincular este PR a uma issue, adicione uma das seguintes linhas ao corpo do PR:',
+                  '- `Fixes #123`',
+                  '- `Closes #123`',
+                  '- `Resolves #123`',
+                  '',
+                  'Onde `123` é o número da issue correspondente no pacote.'
+                ].join('\n');
+
+                if (existingComment) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existingComment.id,
+                    body
+                  });
+                  return;
+                }
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body
+                });
+                return;
+              }
+
+              const body = [
+                linkCommentMarker,
+                `🔗 PR vinculado a ${linkedIssues.map(issueNumber => `#${issueNumber}`).join(', ')}`,
+                '',
+                'As issues vinculadas serão sincronizadas automaticamente com o estado de review deste PR e fechadas em caso de merge.'
+              ].join('\n');
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body
+                });
+                return;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body
+              });
+            }
+
+            async function upsertPrReviewStateComment(state) {
+              if (!['review-approved', 'review-changes-requested', 'review-commented', 'review-dismissed'].includes(state)) {
+                return;
+              }
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100
+              });
+
+              const body = buildPrStateComment(state);
+              const existingComment = comments.find(comment => comment.body && comment.body.includes(prReviewStateCommentMarker));
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body
+                });
+                return;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body
+              });
+            }
+
+            async function setLabelsForIssueNumber(issueNumber, labelsToAdd, labelsToRemove) {
+              const currentLabels = await getCurrentLabels(issueNumber);
+              const desired = [...new Set(currentLabels.filter(label => !labelsToRemove.includes(label)).concat(labelsToAdd))];
+              await github.rest.issues.setLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: desired
+              });
+            }
+
+            async function replaceLabels(labelsToAdd, labelsToRemove) {
+              await setLabelsForIssueNumber(pr.number, labelsToAdd, labelsToRemove);
+            }
+
+            async function removeLabels(issueNumber, labelsToRemove) {
+              const currentLabels = await getCurrentLabels(issueNumber);
+              const desired = currentLabels.filter(label => !labelsToRemove.includes(label));
+              await github.rest.issues.setLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: desired
+              });
+            }
+
+            async function syncLinkedIssues(labelsToAdd, labelsToRemove) {
+              const linkedIssues = getLinkedIssueNumbers();
+              for (const issueNumber of linkedIssues) {
+                const currentLabels = await getCurrentLabels(issueNumber);
+                const previousState = getIssueReviewState(currentLabels);
+                const desiredLabels = [...new Set(currentLabels.filter(label => !labelsToRemove.includes(label)).concat(labelsToAdd))];
+                const nextState = getIssueReviewState(desiredLabels);
+
+                await github.rest.issues.setLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: desiredLabels
+                });
+
+                if (previousState !== nextState) {
+                  await upsertIssueComment(issueNumber, reviewStateCommentMarker, buildIssueStateComment(nextState, issueNumber));
+                }
+              }
+            }
+
+            async function clearLinkedIssueReviewLabels() {
+              const linkedIssues = getLinkedIssueNumbers();
+              for (const issueNumber of linkedIssues) {
+                const currentLabels = await getCurrentLabels(issueNumber);
+                const previousState = getIssueReviewState(currentLabels);
+                await removeLabels(issueNumber, issueReviewLabels);
+
+                if (previousState !== 'none') {
+                  const commentState = context.payload.pull_request.merged ? 'merged' : 'closed-without-merge';
+                  await upsertIssueComment(issueNumber, reviewStateCommentMarker, buildIssueStateComment(commentState, issueNumber));
+                }
+
+                if (context.payload.pull_request.merged) {
+                  const remainingLabels = (await getCurrentLabels(issueNumber)).filter(label => label !== 'done');
+                  await github.rest.issues.setLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    labels: [...remainingLabels, 'done']
+                  });
+
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    state: 'closed'
+                  });
+                }
+              }
+            }
+
+            async function requestReviewIfNeeded() {
+              const configuredReviewers = (process.env.PR_REVIEWERS || '')
+                .split(',')
+                .map(value => value.trim())
+                .filter(Boolean);
+
+              const configuredTeams = (process.env.PR_REVIEW_TEAM_SLUGS || '')
+                .split(',')
+                .map(value => value.trim())
+                .filter(Boolean);
+
+              const fallbackReviewer = pr.user.login === context.repo.owner ? [] : [context.repo.owner];
+              const reviewers = configuredReviewers.length > 0 ? configuredReviewers : fallbackReviewer;
+              const filteredReviewers = reviewers.filter(reviewer => reviewer !== pr.user.login);
+
+              if (filteredReviewers.length === 0 && configuredTeams.length === 0) {
+                return;
+              }
+
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  reviewers: filteredReviewers,
+                  team_reviewers: configuredTeams
+                });
+              } catch (error) {
+                console.log(`Could not auto-request reviewer: ${error.message}`);
+              }
+            }
+
+            if (context.eventName === 'pull_request') {
+              const linkedIssues = getLinkedIssueNumbers();
+              await upsertPrLinkComment(linkedIssues);
+
+              if (context.payload.action === 'closed') {
+                await removeLabels(pr.number, ['needs-review', 'in-review', ...reviewStateLabels]);
+                await clearLinkedIssueReviewLabels();
+                return;
+              }
+
+              await replaceLabels(['needs-review'], ['in-review', ...reviewStateLabels]);
+              await syncLinkedIssues(['needs-review'], ['in-review', ...reviewStateLabels]);
+              await requestReviewIfNeeded();
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const latestReviewStateByUser = new Map();
+            for (const review of reviews) {
+              if (!review.user?.login) {
+                continue;
+              }
+
+              latestReviewStateByUser.set(review.user.login, review.state);
+            }
+
+            const latestStates = [...latestReviewStateByUser.values()];
+            const hasChangesRequested = latestStates.includes('CHANGES_REQUESTED');
+            const hasApproved = latestStates.includes('APPROVED');
+            const hasCommented = latestStates.includes('COMMENTED');
+            const wasDismissed = context.payload.action === 'dismissed';
+            const previousPrState = getIssueReviewState(await getCurrentLabels(pr.number));
+
+            if (hasChangesRequested) {
+              await replaceLabels(['in-review', 'review-changes-requested'], ['needs-review', 'review-approved']);
+              await syncLinkedIssues(['in-review', 'review-changes-requested'], ['needs-review', 'review-approved', 'review-commented', 'review-dismissed']);
+              if (previousPrState !== 'review-changes-requested') {
+                await upsertPrReviewStateComment('review-changes-requested');
+              }
+              return;
+            }
+
+            if (hasApproved) {
+              await replaceLabels(['in-review', 'review-approved'], ['needs-review', 'review-changes-requested']);
+              await syncLinkedIssues(['in-review', 'review-approved'], ['needs-review', 'review-changes-requested', 'review-commented', 'review-dismissed']);
+              if (previousPrState !== 'review-approved') {
+                await upsertPrReviewStateComment('review-approved');
+              }
+              return;
+            }
+
+            if (hasCommented) {
+              await replaceLabels(['in-review', 'review-commented'], ['needs-review', 'review-approved', 'review-changes-requested', 'review-dismissed']);
+              await syncLinkedIssues(['in-review', 'review-commented'], ['needs-review', 'review-approved', 'review-changes-requested', 'review-dismissed']);
+              if (previousPrState !== 'review-commented') {
+                await upsertPrReviewStateComment('review-commented');
+              }
+              return;
+            }
+
+            if (wasDismissed) {
+              await replaceLabels(['needs-review', 'review-dismissed'], ['in-review', 'review-approved', 'review-changes-requested', 'review-commented']);
+              await syncLinkedIssues(['needs-review', 'review-dismissed'], ['in-review', 'review-approved', 'review-changes-requested', 'review-commented']);
+              if (previousPrState !== 'review-dismissed') {
+                await upsertPrReviewStateComment('review-dismissed');
+              }
+              return;
+            }
+
+            await replaceLabels(['needs-review'], ['in-review', ...reviewStateLabels]);
+            await syncLinkedIssues(['needs-review'], ['in-review', ...reviewStateLabels]);

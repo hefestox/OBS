@@ -1,0 +1,104 @@
+name: Label Management
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Roda toda segunda-feira às 9h (UTC)
+    - cron: '0 9 * * 1'
+
+jobs:
+  create-labels:
+    name: Create and Update Repository Labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create/Update Labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              // Tipos
+              { name: 'feature', color: '0e8a16', description: 'Nova capacidade ou evolução do pacote' },
+              { name: 'bug', color: 'd73a4a', description: 'Comportamento incorreto no pacote ou na automação' },
+              { name: 'enhancement', color: 'a2eeef', description: 'Melhoria sobre algo já existente' },
+              { name: 'technical', color: '1d76db', description: 'Tarefa técnica, ajuste estrutural ou refatoração' },
+              { name: 'documentation', color: '0075ca', description: 'Documentação, onboarding, contribution ou guias' },
+              { name: 'testing', color: '7057ff', description: 'Validação, workflows e checagens automatizadas' },
+              { name: 'refactoring', color: '5319e7', description: 'Refatoração de estrutura ou conteúdo' },
+              
+              // Prioridades
+              { name: 'P0-critical', color: 'b60205', description: 'Prioridade 0 - Crítica (bloqueante)' },
+              { name: 'P1-high', color: 'ff9800', description: 'Prioridade 1 - Alta (importante)' },
+              { name: 'P2-medium', color: 'ffc107', description: 'Prioridade 2 - Média (desejável)' },
+              { name: 'P3-low', color: '4caf50', description: 'Prioridade 3 - Baixa (pode aguardar)' },
+              
+              // Status
+              { name: 'needs-triage', color: 'fbca04', description: 'Aguardando triagem' },
+              { name: 'ready', color: '0e8a16', description: 'Pronta para desenvolvimento' },
+              { name: 'needs-review', color: '5319e7', description: 'Pull request aguardando revisão formal' },
+              { name: 'in-progress', color: '1d76db', description: 'Em desenvolvimento' },
+              { name: 'in-review', color: '5319e7', description: 'Em code review' },
+              { name: 'review-approved', color: '0e8a16', description: 'Pull request com aprovação ativa em review' },
+              { name: 'review-changes-requested', color: 'd73a4a', description: 'Pull request com changes requested ativo' },
+              { name: 'review-commented', color: 'fbca04', description: 'Pull request com comentário ativo em review sem aprovação ou changes requested' },
+              { name: 'review-dismissed', color: 'cfd3d7', description: 'Último evento de review foi dismiss e não restou review ativa' },
+              { name: 'blocked', color: 'd93f0b', description: 'Bloqueada por dependência' },
+              { name: 'done', color: '0e8a16', description: 'Concluída' },
+              
+              // Áreas do pacote
+              { name: 'area:agents', color: 'c5def5', description: 'Área: definições dos agents' },
+              { name: 'area:skills', color: 'c5def5', description: 'Área: catálogo de skills' },
+              { name: 'area:templates', color: 'c5def5', description: 'Área: templates operacionais' },
+              { name: 'area:memory', color: 'c5def5', description: 'Área: memória compartilhada e histórico' },
+              { name: 'area:workflows', color: 'c5def5', description: 'Área: GitHub workflows e automação' },
+              { name: 'area:docs', color: 'c5def5', description: 'Área: README, ONBOARD, CONTRIBUTING e guias' },
+              { name: 'area:governance', color: 'c5def5', description: 'Área: protocolo comum e governança transversal' },
+              { name: 'area:package', color: 'c5def5', description: 'Área: impacto amplo no pacote inteiro' },
+              
+              // Especiais
+              { name: 'good-first-issue', color: '7057ff', description: 'Boa para iniciantes' },
+              { name: 'help-wanted', color: '008672', description: 'Precisa de ajuda' },
+              { name: 'breaking-change', color: 'd73a4a', description: 'Quebra compatibilidade' },
+              { name: 'security', color: 'b60205', description: 'Questão de segurança' },
+              { name: 'performance', color: 'ff9800', description: 'Performance' },
+              { name: 'quality', color: '0075ca', description: 'Qualidade de código' },
+              { name: 'dependencies', color: '0366d6', description: 'Atualização de dependências' },
+              { name: 'duplicate', color: 'cfd3d7', description: 'Duplicada' },
+              { name: 'wontfix', color: 'ffffff', description: 'Não será implementado' },
+              { name: 'invalid', color: 'e4e669', description: 'Inválida' }
+            ];
+            
+            for (const label of labels) {
+              try {
+                // Tenta criar a label
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+                console.log(`✅ Label criada: ${label.name}`);
+              } catch (error) {
+                if (error.status === 422) {
+                  // Label já existe, atualiza
+                  try {
+                    await github.rest.issues.updateLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: label.name,
+                      color: label.color,
+                      description: label.description
+                    });
+                    console.log(`🔄 Label atualizada: ${label.name}`);
+                  } catch (updateError) {
+                    console.log(`⚠️ Erro ao atualizar label ${label.name}:`, updateError.message);
+                  }
+                } else {
+                  console.log(`❌ Erro ao criar label ${label.name}:`, error.message);
+                }
+              }
+            }
+            
+            console.log(`\n✅ Processo de criação/atualização de labels concluído!`);

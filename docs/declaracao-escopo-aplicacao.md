@@ -1,238 +1,290 @@
-# Declaração de Escopo da Aplicação Atual (AS-IS)
+# Declaração de Escopo — OBS Pro Bot
 
-## 1) Visão geral e objetivo do produto
-
-A aplicação atual é uma plataforma **web em Streamlit** com dois processos principais:
-
-- **Web UI** (painel do usuário/admin)
-- **Runner do bot** (execução contínua de estratégia de trading)
-
-Ambos compartilham dados em **SQLite**.
-
-**Objetivo observado no código:** permitir que usuários gerenciem conta, chaves de API da Binance, ativem/desativem um bot de trading spot e acompanhem resultados; além de controlar aportes/saques via fluxo administrativo manual.
-
-**Evidências no código:**
-- Arquitetura de dois serviços (`web` e `bot`): `README.md`, `docker-compose.yml`
-- Execução do bot por argumento `--bot`: `dashboard.py` (detecção `BOT_MODE` e `run_bot_loop()`)
-- UI com abas de operação e administração: `dashboard.py` (tabs)
+**Versão:** 1.1  
+**Data:** 2026-03-21  
+**Status:** Revisado  
+**Responsável:** Tech Lead  
+**Revisão:** Cruzamento com `dashboard.py` v5.0.1 — F-006, F-043, F-057 adicionados; dead code `USE_RSI_EXIT` registrado; restrições de segurança e ERD corrigidos.
 
 ---
 
-## 2) Problema de negócio atendido
+## 1. Identificação do projeto
 
-Resolver a operação de trading spot com governança mínima de conta e financeiro interno, concentrando em um único painel:
-
-- autenticação/cadastro;
-- guarda de chaves de API por usuário;
-- execução automática de estratégia (compra/venda);
-- trilha de movimentações internas (ledger) para aporte/saque com aprovação.
-
-**Evidências:** funções de autenticação/sessão, gestão de `user_keys`, `bot_state`, `bot_trades`, `deposits`, `withdrawals`, `ledger` em `dashboard.py`.
-
----
-
-## 3) Stakeholders / personas
-
-- **Usuário operador (`role=user`)**
-  - Cadastra-se, faz login, informa API key/secret, ativa bot, solicita aporte/saque e consulta extrato/performance.
-- **Administrador (`role=admin`)**
-  - Aprova/rejeita aportes e saques, marca saque como pago, acompanha usuários e status dos bots.
-- **Operação técnica (infra)**
-  - Sobe/monitora containers, volume de dados e logs do bot (inferido de README/compose).
-
-> **Hipótese explícita:** persona de operação técnica não aparece como papel funcional de negócio no código da UI, mas é inferida da forma de deploy.
+| Campo | Valor |
+|---|---|
+| **Nome do produto** | OBS Pro Bot |
+| **Versão atual** | 5.0.1 |
+| **Tipo** | Plataforma SaaS de trading algorítmico de criptomoedas |
+| **Repositório** | `ghcr.io/hefestox/obs` |
+| **Stack principal** | Python 3.11 · Streamlit · ccxt · SQLite · Docker Swarm |
 
 ---
 
-## 4) Escopo funcional (in-scope) e não funcional
+## 2. Problema de negócio
 
-### 4.1 Funcional (in-scope)
-
-1. **Cadastro e login de usuários**
-   - Criação de conta com código de indicação opcional.
-2. **Sessão persistida em banco**
-   - Token de sessão com expiração.
-3. **Gestão de chaves API Binance**
-   - Salvar/atualizar chave/segredo + flag testnet.
-4. **Controle de ativação do bot por usuário**
-   - Toggle de operação e persistência de estado.
-5. **Execução de estratégia automática**
-   - Entrada: filtro EMA200 (H1), EMA9>EMA21 e RSI em faixa.
-   - Saída: TP, SL, RSI sobrecomprado, cruzamento EMA para baixo.
-6. **Registro de trades e métricas**
-   - Histórico + winrate + PnL.
-7. **Aportes**
-   - Solicitação com TXID, status pendente, revisão admin, crédito em ledger na aprovação.
-8. **Saques**
-   - Validação de saldo, cálculo de taxa, revisão admin, marcação de pagamento com TXID.
-9. **Extrato**
-   - Visualização e download CSV do ledger.
-10. **Painel administrativo**
-   - Visão de usuários, pendências financeiras e status dos bots.
-
-### 4.2 Não funcional (in-scope)
-
-- **Stack:** Python 3.11 + Streamlit (`Dockerfile`, `requirements.txt`)
-- **Persistência:** SQLite com WAL + volume Docker para durabilidade (`dashboard.py`, `docker-compose.yml`)
-- **Operação:** dois serviços com `restart: unless-stopped` (`docker-compose.yml`)
-- **Observabilidade:** logging em arquivo e stdout (`BOT_LOG_PATH`, `logging.basicConfig`)
-- **Atualização de UI:** auto-refresh opcional (`streamlit-autorefresh`)
+Operadores de criptomoedas precisam monitorar mercados e executar ordens manualmente, o que exige atenção contínua, é sujeito a erros emocionais e limita a capacidade de operar múltiplos ativos simultaneamente. O OBS Pro Bot automatiza a execução de estratégias técnicas na Binance, permitindo que o operador defina o capital e os parâmetros de risco uma única vez e delegue ao sistema a operação contínua 24/7.
 
 ---
 
-## 5) Fora de escopo (out-of-scope)
+## 3. Objetivos
 
-1. **Django e JasperReports**
-   - Não há implementação desses frameworks nesta base atual.
-2. **Liquidação on-chain automática de depósitos/saques**
-   - Fluxo é manual com validação administrativa e lançamento em ledger.
-3. **Relatórios Jasper / BI formal**
-   - Não identificado.
-4. **Múltiplos pares de trading configuráveis**
-   - Par fixo `BTC/USDT` no código.
-5. **Uso operacional de `paper_trades.csv`**
-   - Arquivo existe, mas não há consumo no `dashboard.py`.
-6. **Uso ativo de `CookieManager.py` na aplicação principal**
-   - Fluxo real de sessão está implementado no próprio `dashboard.py`.
+1. Executar ordens de compra e venda automaticamente na Binance com base em indicadores técnicos configuráveis (MACD, RSI, EMA, ATR).
+2. Permitir que múltiplos usuários operem de forma independente, cada um com suas próprias chaves API e capital segregado.
+3. Controlar risco por operação via Take Profit, Stop Loss e Trailing Stop parametrizados.
+4. Oferecer painel web em tempo real para acompanhar posições, histórico de trades e performance.
+5. Prover fluxo financeiro gerenciado (aportes e saques) com aprovação administrativa.
+6. Operar em produção via Docker Swarm sem intervenção manual após o deploy.
 
 ---
 
-## 6) Regras de negócio identificadas
+## 4. Atores e perfis
 
-1. Cadastro exige usuário e senha; se houver código de indicação, precisa existir.
-2. Sessão expira em 30 dias.
-3. Depósito exige TXID e inicia `PENDING`.
-4. Depósito só pode ser revisado uma vez; aprovação gera crédito no ledger.
-5. Saque exige saldo suficiente, rede e endereço.
-6. Taxa de saque = `WITHDRAW_FEE_RATE` (default 5%).
-7. Aprovação de saque debita ledger no valor solicitado.
-8. Marcar saque como pago requer status `APPROVED` e TXID obrigatório.
-9. Entrada do bot só ocorre se:
-   - preço > EMA200 (H1),
-   - EMA9 > EMA21 (5m),
-   - RSI entre 40 e 65.
-10. Saída por:
-    - TP (+1%),
-    - SL (-0,5%),
-    - RSI >= 70,
-    - EMA9 < EMA21.
-11. Após STOP_LOSS há cooldown (`COOLDOWN_AFTER_SL`) antes de nova entrada.
-12. Compra usa fração do saldo (`ORDER_USDT_FRAC = 0.95`) e respeita mínimo de ordem.
-
----
-
-## 7) Dependências e integrações externas
-
-### 7.1 Dependências Python (`requirements.txt`)
-
-- `streamlit`
-- `pandas`
-- `requests`
-- `ccxt`
-- `streamlit-autorefresh`
-- `extra-streamlit-components`
-- `psycopg2-binary` *(presente, sem evidência de uso no fluxo atual)*
-
-### 7.2 Integrações externas
-
-- **Binance API pública (HTTP via requests)**  
-  - preço atual e horário do servidor.
-- **Binance Spot autenticada (via ccxt)**  
-  - candles, saldo, ordens market buy/sell.
-
----
-
-## 8) Restrições técnicas e operacionais
-
-- Banco local **SQLite** compartilhado por web e bot.
-- Estratégia e parâmetros majoritariamente hardcoded.
-- Necessidade de manter **runner do bot** ativo separadamente da UI.
-- Credenciais/sessão dependentes de variáveis de ambiente (com defaults).
-- Processo administrativo financeiro é manual (aprovação e pagamento).
-
----
-
-## 9) Suposições e riscos
-
-### 9.1 Suposições
-
-- `paper_trades.csv` é artefato histórico/teste (não operacional na aplicação atual).
-- `CookieManager.py` é código auxiliar não integrado ao fluxo principal atual.
-
-### 9.2 Riscos
-
-- Senha admin e `SESSION_SECRET` com defaults previsíveis no compose.
-- Token de sessão em query param (`sid`) pode ampliar exposição em histórico/log/referer.
-- API key/secret armazenadas em banco sem evidência de criptografia em repouso.
-- Fluxo manual de aprovação/pagamento pode gerar gargalo operacional.
-- Inconsistência potencial entre texto “Binance Brasil” na UI e integração técnica via `ccxt.binance` padrão (avaliar alinhamento operacional).
-
----
-
-## 10) Critérios de sucesso/aceite de alto nível
-
-| ID | Critério de sucesso | Evidência esperada |
+| Ator | Descrição | Permissões |
 |---|---|---|
-| CA-01 | Usuário cria conta e autentica com sucesso | Registro em `users` + sessão válida |
-| CA-02 | Sessão persiste e expira corretamente | Registro em `sessions` com `expires_at` |
-| CA-03 | Usuário salva chaves API e consegue ativar bot | `user_keys` preenchido + `bot_state.enabled=1` |
-| CA-04 | Bot executa ciclos e registra operações | `last_step_ts` atualizado + registros em `bot_trades` |
-| CA-05 | Performance e histórico aparecem na UI | métricas calculadas e dataframe de trades |
-| CA-06 | Aporte percorre pendência → revisão → crédito | `deposits` + lançamento `ledger` ao aprovar |
-| CA-07 | Saque percorre solicitação → aprovação/rejeição → pago | `withdrawals` com transições de status |
-| CA-08 | Extrato exportável em CSV | download do ledger na aba Extrato |
+| **Usuário** | Operador que utiliza o bot para trading | Gerencia próprias chaves API, solicita aportes/saques, visualiza seu painel e extrato |
+| **Administrador** | Operador com privilégio total | Tudo do usuário + aprova aportes/saques, gerencia usuários, controla bots de todos os usuários, visualiza status global |
+| **Bot Loop** | Processo background autônomo | Lê estado e chaves de todos os usuários ativos, executa ordens na exchange, grava trades e atualiza estado |
 
 ---
 
-## 11) Matriz de rastreabilidade (requisito -> evidência no código)
+## 5. Escopo funcional
 
-| Requisito | Tipo | Evidência |
+### 5.1 Autenticação e gestão de contas
+
+| ID | Funcionalidade | Perfil |
 |---|---|---|
-| RF-01 Cadastro/login | Funcional | `dashboard.py` (`create_user`, `auth`, sidebar login/cadastro) |
-| RF-02 Sessão com expiração | Funcional | `create_session`, `get_session_user`, `delete_session` |
-| RF-03 Chaves API por usuário | Funcional | `save_user_keys`, `get_user_keys`, aba “🔑 Chaves API” |
-| RF-04 Ativar/desativar bot | Funcional | `bot_state.enabled`, toggle na aba Painel |
-| RF-05 Estratégia de entrada | Funcional | `check_entry_signal`, `fetch_ema200_h1`, `fetch_indicators_5m` |
-| RF-06 Estratégia de saída | Funcional | lógica TP/SL + `check_exit_signal` |
-| RF-07 Registro/métricas de trade | Funcional | `insert_bot_trade`, `load_bot_trades`, `compute_metrics` |
-| RF-08 Fluxo de aporte | Funcional | `create_deposit`, `admin_review_deposit`, UI aporte/admin |
-| RF-09 Fluxo de saque | Funcional | `create_withdrawal`, `admin_review_withdrawal`, `admin_mark_withdraw_paid` |
-| RF-10 Extrato CSV | Funcional | consulta `ledger` + `st.download_button` |
-| RNF-01 Deploy containerizado | Não funcional | `Dockerfile`, `docker-compose.yml`, `README.md` |
-| RNF-02 Persistência em volume | Não funcional | volume `obs_data` e paths `/app/data` |
-| RNF-03 Logging operacional do bot | Não funcional | `BOT_LOG_PATH`, `logging.FileHandler` |
-| RNF-04 Integração Binance | Integração | `requests` Binance endpoints + `ccxt.binance` |
+| F-001 | Criar conta com usuário, senha e código de indicação (opcional) | Público |
+| F-002 | Login com sessão persistente por 30 dias (token SHA-256 em query param) | Público |
+| F-003 | Logout com invalidação de sessão | Usuário / Admin |
+| F-004 | Cadastrar/atualizar chaves API da Binance (Key + Secret + flag Testnet) | Usuário / Admin |
+| F-005 | Listar todos os usuários | Admin |
+| F-006 | Exibir código de indicação próprio (`my_code`) e identificar o indicador (`referrer_code`) na aba "Minha Conta" | Usuário / Admin |
+
+### 5.2 Operação do bot
+
+| ID | Funcionalidade | Perfil |
+|---|---|---|
+| F-010 | Ativar / desativar bot por par de trading via toggle na UI | Usuário / Admin |
+| F-011 | Executar compra por sinal de entrada (MACD, RSI, EMA200 H1, EMA50 4H, ATR) | Bot Loop |
+| F-012 | Executar venda por Take Profit | Bot Loop |
+| F-013 | Executar venda por Stop Loss | Bot Loop |
+| F-014 | Executar venda por Trailing Stop (ativa após +0,45%, distância 0,20%) | Bot Loop |
+| F-015 | Aplicar cooldown de 1200s após Stop Loss antes de nova entrada | Bot Loop |
+| F-016 | Controlar mínimo de tempo em posição (420s) antes de saída técnica | Bot Loop |
+| F-017 | Controlar máximo de pares simultâneos por usuário (2 pares) | Bot Loop |
+| F-018 | Detectar e recuperar posição preexistente na exchange ao iniciar | Bot Loop |
+| F-019 | Controlar bots de qualquer usuário (ativar/desativar) | Admin |
+| F-057 | Saída técnica por cruzamento MACD descendente (linha < sinal) quando `USE_EMA_EXIT=True` — **desabilitado por padrão** | Bot Loop |
+
+> **Feature flags de sinal configuráveis em `★ CONFIG`:**
+> `USE_4H_FILTER` (ativo), `USE_RSI_ENTRY` (ativo), `USE_TRAILING_STOP` (ativo), `USE_EMA_EXIT` (inativo — F-057), `USE_TIME_FILTER` (inativo), `USE_ENGULFING_PATTERN` / `USE_DOUBLE_ENGULFING_PATTERN` / `USE_OUTSIDE_BAR_PATTERN` / `USE_CANDLESTICK_CONFIRM` (todos inativos).
+>
+> ⚠️ **Dead code identificado:** `USE_RSI_EXIT = True` e `RSI_EXIT = 70` estão declarados como constantes mas **não são usados** em nenhuma função de saída (`check_exit_signal`). A saída por RSI está pendente de implementação — ver seção 12.
+
+### 5.3 Performance e visualização
+
+| ID | Funcionalidade | Perfil |
+|---|---|---|
+| F-020 | Exibir status em tempo real por par (USDT, ativo, status, preço, TP/SL) | Usuário / Admin |
+| F-021 | Exibir métricas globais de performance (winrate, PnL realizado, W/L) | Usuário / Admin |
+| F-022 | Exibir histórico de trades com filtro por par | Usuário / Admin |
+| F-023 | Exibir status global de todos os bots (painel admin) | Admin |
+| F-024 | Auto-atualização configurável da UI (5–60s via streamlit-autorefresh) | Usuário / Admin |
+
+### 5.4 Fluxo financeiro
+
+| ID | Funcionalidade | Perfil |
+|---|---|---|
+| F-030 | Solicitar aporte informando valor e TXID da transação | Usuário / Admin |
+| F-031 | Revisar aporte pendente (aprovar / rejeitar com nota) | Admin |
+| F-032 | Ativar bot automaticamente após aprovação de aporte (se chaves já cadastradas) | Admin / Sistema |
+| F-033 | Solicitar saque informando valor, rede e endereço | Usuário / Admin |
+| F-034 | Revisar saque pendente (aprovar / rejeitar com nota) | Admin |
+| F-035 | Marcar saque aprovado como pago com TXID do pagamento | Admin |
+| F-036 | Cobrar taxa de operação (R$ 0,50) no ledger a cada venda executada | Bot Loop |
+| F-037 | Cobrar taxa de saque (5% sobre o valor solicitado) | Sistema |
+| F-043 | Exibir endereço de depósito fixo (`DEPOSIT_ADDRESS_FIXED`) na aba Aporte para orientar o envio de fundos | Usuário / Admin |
+
+### 5.5 Extrato e exportação
+
+| ID | Funcionalidade | Perfil |
+|---|---|---|
+| F-040 | Exibir extrato de movimentações do ledger (500 últimos registros) | Usuário / Admin |
+| F-041 | Exportar extrato em CSV | Usuário / Admin |
+
+### 5.6 Infraestrutura e operação
+
+| ID | Funcionalidade | Perfil |
+|---|---|---|
+| F-050 | Subir web + bot como serviços Docker Compose (local) | DevOps |
+| F-051 | Subir web + bot como stack Docker Swarm (produção) | DevOps |
+| F-052 | Log rotativo com RotatingFileHandler (5 MB × 2 backups) | Sistema |
+| F-053 | Cache de cliente ccxt por usuário (rebuild a cada 1h) para evitar MemoryError | Bot Loop |
+| F-054 | Retry de busca de saldo (3 tentativas com delay de 3s) | Bot Loop |
+| F-055 | Sincronização de relógio com Binance (offset de timestamp) | Bot Loop |
+| F-056 | Validação de sintaxe Python em CI (py_compile) | CI/CD |
 
 ---
 
-## 12) Diagrama Mermaid (fluxo macro)
+## 6. Escopo fora (out-of-scope)
+
+Os itens abaixo **não fazem parte** do escopo atual da aplicação:
+
+- Suporte a exchanges além da Binance Spot.
+- Ordens limitadas, OCO ou ordens do tipo futures/margin.
+- Estratégias de trading personalizáveis por usuário via UI.
+- Notificações push, e-mail ou Telegram/Discord.
+- Interface mobile nativa (apenas web responsivo via Streamlit).
+- Integração com brokers de ações ou outros instrumentos financeiros.
+- Dashboard de análise técnica avançada (gráficos de candlestick interativos).
+- Backtesting de estratégias.
+- Multi-exchange por usuário.
+- Autenticação de dois fatores (2FA).
+- Gestão de permissões granular (além de `admin` e `user`).
+- Banco de dados PostgreSQL (disponível como dependência, mas não utilizado).
+
+---
+
+## 7. Premissas
+
+1. O usuário possui conta ativa na Binance com Spot Trading habilitado.
+2. As chaves API da Binance têm permissão **apenas** de leitura e Spot Trading — sem permissão de saque.
+3. O ambiente de produção possui Docker Swarm configurado com ao menos 1 nó.
+4. As variáveis de ambiente `SESSION_SECRET`, `DEFAULT_ADMIN_USER` e `DEFAULT_ADMIN_PASS` são injetadas no container em produção.
+5. O volume `obs_data` é persistente e compartilhado entre os serviços `web` e `bot`.
+6. A conectividade com a API da Binance é estável o suficiente para ciclos de 15 segundos.
+7. O par BTC/USDT e ETH/USDT têm liquidez suficiente para market orders de no mínimo 10 USDT.
+
+---
+
+## 8. Restrições
+
+| Restrição | Descrição |
+|---|---|
+| **Técnica** | SQLite como banco — sem suporte a alta concorrência de escrita; exige `_DB_LOCK` em todas as operações |
+| **Financeira** | Valor mínimo de order: 10 USDT; cap por par: 20 USDT (`USDT_PER_SYMBOL`) |
+| **Operacional** | Máximo de 2 pares simultâneos por usuário (`MAX_PARES_SIMULTANEOS`) |
+| **Regulatória** | O sistema não valida a conformidade legal do usuário para trading de criptomoedas |
+| **Segurança** | `DEFAULT_ADMIN_PASS` possui valor padrão hardcoded no código — deve ser sobrescrito obrigatoriamente via env var em produção |
+| **Infraestrutura** | Deploy limitado a 1 réplica do serviço bot (não suporta escalonamento horizontal do bot loop) |
+| **Segurança** | `DEPOSIT_ADDRESS_FIXED` (endereço TRC-20) está hardcoded no código — deve ser configurável via env var para evitar rebuild em caso de troca de carteira |
+| **Segurança (débito técnico)** | Senhas armazenadas com SHA-256 puro — não é uma KDF adequada para senhas; bcrypt ou argon2 seriam mais seguros. Migração deve ser tratada como débito técnico prioritário |
+
+---
+
+## 9. Requisitos não funcionais
+
+| ID | Categoria | Requisito |
+|---|---|---|
+| NF-001 | Disponibilidade | Bot loop deve tolerar erros individuais por usuário sem derrubar o ciclo global |
+| NF-002 | Disponibilidade | Após 10 erros consecutivos, aguardar 60s antes de retomar |
+| NF-003 | Performance | Ciclo do bot deve completar em menos de 15s para todos os usuários ativos |
+| NF-004 | Segurança | Senhas armazenadas como hash SHA-256 — nunca em texto claro |
+| NF-005 | Segurança | Tokens de sessão expiram em 30 dias e são invalidados no logout |
+| NF-004R | Segurança (risco residual) | SHA-256 não é KDF recomendado para passwords — substituição por bcrypt/argon2 listada como débito técnico pendente |
+| NF-006 | Segurança | Chaves API nunca exibidas na UI além dos primeiros 8 caracteres |
+| NF-007 | Observabilidade | Log estruturado com nível INFO/ERROR/CRITICAL + rotação automática (5 MB) |
+| NF-008 | Manutenibilidade | Toda configuração de negócio centralizada na seção `★ CONFIG` de `dashboard.py` |
+| NF-009 | Resiliência | Retry com 3 tentativas e delay de 3s nas chamadas de saldo à exchange |
+| NF-010 | Resiliência | Cache de cliente ccxt reconstruído a cada 1h para evitar MemoryError |
+
+---
+
+## 10. Critérios de aceite por funcionalidade chave
+
+### Bot de trading (F-011 a F-018)
+
+- [ ] Bot executa BUY somente quando MACD linha > 0 **E** RSI entre 47–62 **E** preço > EMA200 H1 **E** preço > EMA50 4H **E** ATR% ≥ 0,15%.
+- [ ] Bot executa SELL por TP quando preço ≥ entry × 1,0075.
+- [ ] Bot executa SELL por SL quando preço ≤ entry × 0,9955.
+- [ ] Bot ativa Trailing Stop após ganho ≥ 0,45% do entry.
+- [ ] Cooldown de 1200s é respeitado após qualquer SL ou Trailing Stop.
+- [ ] Posição não é encerrada por sinal técnico antes de 420s de hold.
+- [ ] Taxa de R$ 0,50 é debitada do ledger somente na SELL, nunca na BUY.
+- [ ] Máximo de 2 pares em posição simultânea por usuário.
+- [ ] Quando `USE_EMA_EXIT=True` habilitado: SELL executado ao detectar MACD linha < sinal após `MIN_HOLD_SECONDS`.
+- [ ] Enquanto `USE_RSI_EXIT` não for implementado em `check_exit_signal`: ausência de saída inesperada por RSI deve ser validada.
+
+### Autenticação (F-001 a F-003)
+
+- [ ] Usuário com credenciais válidas recebe sessão com expiração de 30 dias.
+- [ ] Sessão é recuperada via `?sid=token` no reload da página.
+- [ ] Logout invalida token no banco — reload não recupera sessão.
+
+### Fluxo financeiro (F-030 a F-037)
+
+- [ ] Aporte aprovado gera registro no ledger de kind=DEPOSIT.
+- [ ] Saque rejeitado não gera débito no ledger.
+- [ ] Admin só pode marcar saque como PAGO se status for APPROVED.
+- [ ] Saldo do usuário é sempre a soma dos registros do ledger — não dos depósitos isolados.
+- [ ] Endereço `DEPOSIT_ADDRESS_FIXED` é exibido na aba Aporte antes do formulário de solicitação.
+
+---
+
+## 11. Rastreabilidade — Funcionalidades por componente
 
 ```mermaid
-flowchart TD
-    A[Usuário acessa Streamlit] --> B[Login/Cadastro]
-    B --> C[Configura API Key/Secret]
-    C --> D[Ativa Bot]
-    D --> E[Runner --bot em loop]
-    E --> F[Consulta Binance: saldo/preço/candles]
-    F --> G{Sinal de entrada/saída}
-    G -->|Entrada válida| H[Ordem Market BUY]
-    G -->|Saída válida| I[Ordem Market SELL]
-    H --> J[Atualiza bot_state e bot_trades]
-    I --> J
-    B --> K[Solicita Aporte/Saque]
-    K --> L[Admin aprova/rejeita]
-    L --> M[Atualiza deposits/withdrawals e ledger]
-    M --> N[Usuário consulta Extrato/Performance]
+graph LR
+    subgraph UI["Web UI (Streamlit)"]
+        F001 --> login[Login / Sessão]
+        F010 --> panel[Painel BOT]
+        F020 --> panel
+        F030 --> deposit[Aba Aporte]
+        F033 --> withdraw[Aba Saque]
+        F040 --> extract[Aba Extrato]
+        F019 --> admin[Aba Admin]
+    end
+
+    subgraph BOT["Bot Loop (background)"]
+        F011 --> entry[check_entry_signal]
+        F012 --> exit_tp[TP check]
+        F013 --> exit_sl[SL check]
+        F014 --> trailing[Trailing Stop]
+        F017 --> limit_pairs[max pairs control]
+        F036 --> fee[add_ledger ADJUST]
+    end
+
+    subgraph DB["SQLite"]
+        users_t[(users)]
+        bot_state_t[(bot_state)]
+        bot_trades_t[(bot_trades)]
+        ledger_t[(ledger)]
+        deposits_t[(deposits)]
+        withdrawals_t[(withdrawals)]
+    end
+
+    subgraph DB2["SQLite (auth)"]
+        sessions_t[(sessions)]
+    end
+
+    login --> sessions_t
+
+    login --> users_t
+    panel --> bot_state_t
+    entry --> bot_trades_t
+    exit_tp --> bot_trades_t
+    exit_sl --> bot_trades_t
+    fee --> ledger_t
+    deposit --> deposits_t
+    withdraw --> withdrawals_t
 ```
 
 ---
 
-## Referências de arquivos analisados
+## 12. Marcos e estado atual
 
-- `dashboard.py`
-- `README.md`
-- `Dockerfile`
-- `docker-compose.yml`
-- `requirements.txt`
-- `CookieManager.py`
-- `paper_trades.csv`
+| Marco | Status |
+|---|---|
+| MVP funcional com bot e UI | ✅ Concluído (v1.0) |
+| Multi-par (BTC/USDT + ETH/USDT) | ✅ Concluído (v4.0) |
+| Cache de exchange (fix MemoryError) | ✅ Concluído (v5.0.0) |
+| Taxa cobrada na venda | ✅ Concluído (v5.0.0) |
+| Log rotativo | ✅ Concluído (v5.0.0) |
+| CI com validação de estrutura e sintaxe Python | ✅ Concluído |
+| Testes automatizados (pytest) | 🔲 Pendente |
+| Notificações (Telegram/Discord) | 🔲 Pendente |
+| Migração para PostgreSQL | 🔲 Pendente |
+| Rate limiting no login | 🔲 Pendente |
+| Implementar saída por RSI (`USE_RSI_EXIT` em `check_exit_signal`) | 🔲 Pendente (dead code) |
+| Migrar hashing de senhas para bcrypt/argon2 | 🔲 Pendente (débito técnico de segurança) |
+| Tornar `DEPOSIT_ADDRESS_FIXED` configurável via env var | 🔲 Pendente |

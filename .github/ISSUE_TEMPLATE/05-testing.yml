@@ -1,0 +1,222 @@
+name: 🧪 Testing
+description: Criar ou melhorar validações automatizadas e checks do pacote
+title: "[TEST]: "
+labels: ["testing", "quality", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🧪 Testes Automatizados
+        
+        Use este template para propor validações, checks e workflows de qualidade para este pacote.
+
+  - type: dropdown
+    id: test-type
+    attributes:
+      label: Tipo de Teste
+      description: Qual tipo de teste será implementado?
+      options:
+        - Validação estrutural do pacote
+        - Validação de links e documentação
+        - Validação de workflows GitHub Actions
+        - Validação de skills e frontmatter
+        - Validação de templates
+        - Validação de memória e histórico
+        - Regressão de automação
+        - Teste de segurança documental
+        - Outro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Área do Pacote
+      description: Qual área será validada?
+      options:
+        - Agents
+        - Skills
+        - Templates
+        - Memória
+        - Workflows
+        - Documentação
+        - Package-wide
+        - Outro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Camada / Tipo de Ativo
+      description: Qual tipo de ativo será validado?
+      options:
+        - Arquivos Markdown
+        - Issue templates
+        - Workflows
+        - Skills (SKILL.md e assets)
+        - Governança transversal
+        - Repositório completo
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição
+      description: O que precisa ser testado?
+      placeholder: |
+        Descreva o escopo dos testes a serem criados/melhorados:
+        - Arquivos a validar
+        - Regras a checar
+        - Edge cases importantes
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-coverage
+    attributes:
+      label: Cobertura Atual
+      description: Qual a situação atual dos testes?
+      placeholder: |
+        - Cobertura atual: X%
+        - Testes existentes (se houver)
+        - Gaps identificados
+    validations:
+      required: false
+
+  - type: textarea
+    id: test-scenarios
+    attributes:
+      label: Cenários de Teste
+      description: Liste os cenários que devem ser testados
+      placeholder: |
+        **Cenários de Sucesso:**
+        - [ ] Cenário 1: ...
+        - [ ] Cenário 2: ...
+        
+        **Cenários de Erro:**
+        - [ ] Frontmatter inválido
+        - [ ] Link quebrado
+        - [ ] Arquivo obrigatório ausente
+        
+        **Edge Cases:**
+        - [ ] Arquivos parcialmente migrados
+        - [ ] Referências legadas
+        - [ ] Automação desatualizada
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-data
+    attributes:
+      label: Dados de Teste
+      description: Que dados serão necessários para os testes?
+      placeholder: |
+        - Fixtures
+        - Repositório com arquivos obrigatórios
+        - Exemplos mínimos de issue/PR
+        - Conteúdo de referência para validação
+
+  - type: textarea
+    id: assertions
+    attributes:
+      label: Asserções Principais
+      description: O que deve ser verificado nos testes?
+      placeholder: |
+        - Status code esperado
+        - Arquivos obrigatórios presentes
+        - Links internos válidos
+        - Estrutura esperada dos artefatos
+        - Ausência de referências legadas
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      description: Qual a prioridade destes testes?
+      options:
+        - P0 - Crítica (funcionalidade crítica sem testes)
+        - P1 - Alta (importante para qualidade)
+        - P2 - Média (melhorar cobertura)
+        - P3 - Baixa (nice to have)
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependências
+      description: Que dependências ou preparação são necessárias?
+      placeholder: |
+        - GitHub Actions
+        - Shell utilities básicas
+        - Arquivos obrigatórios do pacote
+        - Labels esperadas
+
+  - type: dropdown
+    id: estimated-effort
+    attributes:
+      label: Estimativa de Esforço
+      description: Quanto tempo para implementar estes testes?
+      options:
+        - XS (1-2 horas)
+        - S (3-8 horas)
+        - M (1-2 dias)
+        - L (3-5 dias)
+        - XL (1+ semana)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: test-requirements
+    attributes:
+      label: Requisitos dos Testes
+      description: O que os testes devem garantir?
+      options:
+        - label: Estrutura obrigatória do pacote preservada
+        - label: Links internos válidos
+        - label: Frontmatter válido quando aplicável
+        - label: Segurança documental / ausência de segredos hardcoded
+        - label: Workflows executáveis e coerentes
+        - label: Checks determinísticos
+        - label: Regressão evitada
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Critérios de Aceitação
+      description: Como saber que os testes estão completos?
+      placeholder: |
+        - [ ] Todos os cenários listados implementados
+        - [ ] Checks passando no CI/CD
+        - [ ] Documentação ou workflow atualizado
+        - [ ] Critérios de regressão cobertos
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referências
+      description: Links relevantes
+      placeholder: |
+        - Requisito funcional: RF-XXX
+        - Documento relacionado: README.md / CONTRIBUTING.md
+        - Issue relacionada: #123
+        - PR relacionado: #456
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: Identifiquei os cenários críticos a testar
+          required: true
+        - label: Considerei casos de sucesso e erro
+          required: true
+        - label: Planejei dados de teste necessários
+          required: true

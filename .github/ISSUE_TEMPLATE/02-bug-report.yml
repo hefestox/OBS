@@ -1,0 +1,221 @@
+name: 🐛 Bug Report
+description: Reportar bug em agents, templates, skills, memória, docs ou workflows do pacote
+title: "[BUG]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Reporte de Bug
+        
+        Obrigado por reportar um problema neste pacote.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severidade
+      description: Qual a severidade deste bug?
+      options:
+        - 🔴 Crítica (sistema inoperante, perda de dados)
+        - 🟠 Alta (funcionalidade principal quebrada)
+        - 🟡 Média (funcionalidade afetada, workaround disponível)
+        - 🟢 Baixa (cosmético, não afeta funcionalidade)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Área Afetada
+      description: Qual parte do pacote está apresentando o problema?
+      options:
+        - Agents
+        - Skills
+        - Templates
+        - Memória
+        - Workflows
+        - README / ONBOARD / CONTRIBUTING
+        - Automação GitHub
+        - Governança transversal
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do Bug
+      description: Uma descrição clara e concisa do bug
+      placeholder: O que está acontecendo de errado?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Passos para Reproduzir
+      description: Como reproduzir o comportamento?
+      placeholder: |
+        1. Faça login como '...'
+        2. Navegue até '...'
+        3. Clique em '...'
+        4. Veja o erro
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Comportamento Esperado
+      description: O que deveria acontecer?
+      placeholder: Descreva o comportamento correto esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Comportamento Atual
+      description: O que está acontecendo?
+      placeholder: Descreva o comportamento incorreto observado
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Logs de Erro
+      description: Cole aqui logs de erro relevantes
+      placeholder: |
+        ```
+        Cole os logs aqui
+        ```
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Vídeos
+      description: Se aplicável, adicione screenshots ou vídeos do problema
+      placeholder: Cole ou arraste imagens/vídeos aqui
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Contexto
+      description: Onde o problema foi percebido?
+      options:
+        - Uso local do pacote
+        - Repositório no GitHub
+        - Workflow do GitHub Actions
+        - Criação de issue ou PR
+        - Revisão documental
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment-details
+    attributes:
+      label: Detalhes do Ambiente
+      description: Informações relevantes do ambiente onde o problema ocorreu
+      placeholder: |
+        - OS: [ex: Ubuntu 22.04]
+        - Editor/runner: [ex: VS Code, GitHub Actions]
+        - Branch: [ex: main]
+        - Arquivo afetado: [ex: AGENTS.md, workflow, skill]
+        - Browser (se aplicável): [ex: Chrome 120]
+    validations:
+      required: false
+
+  - type: textarea
+    id: request-response
+    attributes:
+      label: Trecho Relevante
+      description: Se o bug envolve arquivo, log, workflow ou template, cole o trecho aqui
+      placeholder: |
+        **Request:**
+        ```http
+        POST /api/endpoint
+        Content-Type: application/json
+        
+        {
+          "data": "example"
+        }
+        ```
+        
+        **Response:**
+        ```json
+        {
+          "error": "message"
+        }
+        ```
+      render: shell
+
+  - type: dropdown
+    id: user-role
+    attributes:
+      label: Papel / Fluxo Afetado
+      description: Se aplicável, com qual papel ou fluxo o problema apareceu?
+      options:
+        - Tech Lead
+        - Business Analyst
+        - Senior Developer
+        - QA Expert
+        - UX Expert
+        - DBA
+        - Fluxo transversal
+        - Outro
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Existe alguma solução temporária?
+      placeholder: Descreva qualquer workaround conhecido
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Contexto Adicional
+      description: Qualquer outra informação relevante sobre o problema
+      placeholder: |
+        - Quando o bug começou a ocorrer?
+        - Acontece sempre ou intermitentemente?
+        - Afeta um arquivo, um fluxo ou o pacote inteiro?
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regressão?
+      description: Este bug foi introduzido recentemente?
+      options:
+        - Sim, funcionava antes
+        - Não, nunca funcionou
+        - Não sei
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referências
+      description: Links para PRs, commits ou issues relacionadas
+      placeholder: |
+        - PR que pode ter introduzido o bug: #123
+        - Issue relacionada: #456
+        - Commit: abc123
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: Verifiquei que este bug não está duplicado em outra issue
+          required: true
+        - label: Testei em ambiente atualizado
+          required: true
+        - label: Incluí informações suficientes para reproduzir o bug
+          required: true

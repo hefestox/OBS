@@ -1,0 +1,166 @@
+name: 📚 Documentation
+description: Melhorias ou correções na documentação do pacote, onboarding, contribuição, memória ou artefatos formais
+title: "[DOCS]: "
+labels: ["documentation", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📚 Documentação
+        
+        Use este template para propor melhorias, correções ou adições à documentação do pacote.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Tipo de Documentação
+      description: Qual documento principal será afetado?
+      options:
+        - README.md
+        - ONBOARD.md
+        - CONTRIBUTING.md
+        - AGENTS.md
+        - Memória compartilhada
+        - Histórico da memória
+        - Templates
+        - Skill docs
+        - Workflows / automação
+        - Outro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: action-type
+    attributes:
+      label: Tipo de Ação
+      description: O que precisa ser feito?
+      options:
+        - Criar nova documentação
+        - Atualizar documentação existente
+        - Corrigir erro/inconsistência
+        - Adicionar exemplos
+        - Adicionar diagramas
+        - Melhorar clareza
+        - Tradução
+        - Remover documentação obsoleta
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição
+      description: O que precisa ser documentado ou corrigido?
+      placeholder: |
+        Descreva detalhadamente o que precisa ser feito na documentação
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Estado Atual
+      description: Como está atualmente? (se aplicável)
+      placeholder: |
+        Cole o trecho atual da documentação ou descreva o que está faltando
+
+  - type: textarea
+    id: proposed-content
+    attributes:
+      label: Conteúdo Proposto
+      description: Como deveria ficar?
+      placeholder: |
+        Forneça o novo conteúdo ou descreva como deveria ser documentado
+        
+        Pode incluir:
+        - Texto markdown
+        - Diagramas Mermaid
+        - Exemplos de código
+        - Links de referência
+
+  - type: textarea
+    id: files-affected
+    attributes:
+      label: Arquivos Afetados
+      description: Quais arquivos serão modificados?
+      placeholder: |
+        - /README.md
+        - /AGENTS.md
+        - /memoria/MEMORIA-COMPARTILHADA.md
+        - /templates/...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      description: Qual a prioridade desta documentação?
+      options:
+        - P0 - Crítica (documentação essencial faltando)
+        - P1 - Alta (importante para o projeto)
+        - P2 - Média (melhoria desejável)
+        - P3 - Baixa (nice to have)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: documentation-areas
+    attributes:
+      label: Áreas de Documentação
+      description: Marque as áreas relacionadas
+      options:
+        - label: Onboarding
+        - label: Governança
+        - label: Templates formais
+        - label: Skills
+        - label: Memória e histórico
+        - label: Fluxos Mermaid
+        - label: Automação GitHub
+        - label: Exemplos de uso
+
+  - type: textarea
+    id: diagrams
+    attributes:
+      label: Diagramas Necessários
+      description: Descreva diagramas que precisam ser criados/atualizados
+      placeholder: |
+        Tipo de diagrama (Mermaid):
+        - Sequence Diagram para handoff entre agents
+        - Flow Chart de governança
+        - Fluxo documental
+        - Mapa de decisão para skills
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Exemplos/Referências
+      description: Exemplos de como a documentação deveria ser
+      placeholder: |
+        Links para documentação similar ou exemplos de boa documentação
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivação
+      description: Por que esta documentação é necessária?
+      placeholder: |
+        - Dificuldade de entendimento atual
+        - Feedback de contribuidores
+        - Correção de inconsistências
+        - Nova baseline do pacote
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: Verifiquei que esta documentação não está duplicada
+          required: true
+        - label: A documentação proposta está alinhada com o projeto
+          required: true
+        - label: Considerei o público-alvo (desenvolvedores, gestores, etc.)
+          required: true

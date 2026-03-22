@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 README
+    url: https://github.com/salesadriano/ai_team/blob/main/README.md
+    about: Visão completa do pacote, sua estrutura e seus fluxos
+  - name: 🚀 ONBOARD
+    url: https://github.com/salesadriano/ai_team/blob/main/ONBOARD.md
+    about: Caminho rápido para começar a usar o pacote
+  - name: 🛠️ CONTRIBUTING
+    url: https://github.com/salesadriano/ai_team/blob/main/CONTRIBUTING.md
+    about: Regras para evoluir agents, templates, skills, memória e workflows

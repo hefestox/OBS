@@ -1,0 +1,172 @@
+name: 🚀 Feature Request / User Story
+description: Propor nova capacidade para agents, templates, skills, memória ou automação do pacote
+title: "[FEATURE]: "
+labels: ["enhancement", "feature", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🚀 Proposta de Evolução do Pacote
+        
+        Use este template para propor novas capacidades no pacote de agents, templates, skills, memória ou automações do repositório.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      description: Qual a prioridade desta funcionalidade?
+      options:
+        - P0 - Crítica (bloqueante)
+        - P1 - Alta (importante)
+        - P2 - Média (desejável)
+        - P3 - Baixa (pode aguardar)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Área do Pacote
+      description: Em qual área principal esta proposta se encaixa?
+      options:
+        - Agents
+        - Skills
+        - Templates
+        - Memória
+        - Workflows
+        - Documentação
+        - Governança transversal
+        - Package-wide
+    validations:
+      required: true
+
+  - type: dropdown
+    id: epic
+    attributes:
+      label: Tipo de Evolução
+      description: Qual é a natureza principal desta proposta?
+      options:
+        - Novo fluxo operacional
+        - Novo template
+        - Nova skill
+        - Novo guardrail de governança
+        - Melhoria de descoberta ou onboarding
+        - Melhoria de automação GitHub
+        - Outro / Não se aplica
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: História de Usuário
+      description: Descreva a capacidade no formato de história de usuário
+      placeholder: |
+        Como [tipo de usuário]
+        Eu quero [fazer algo]
+        Para que [benefício/valor]
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição Detalhada
+      description: Descreva claramente o problema atual, a mudança desejada e o impacto esperado
+      placeholder: |
+        Descreva em detalhes o que a funcionalidade deve fazer, incluindo:
+        - Comportamento esperado
+        - Regras de negócio
+        - Validações necessárias
+        - Integrações com outros módulos
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Critérios de Aceitação
+      description: Liste os critérios para considerar a proposta concluída
+      placeholder: |
+        - [ ] Critério 1
+        - [ ] Critério 2
+        - [ ] Critério 3
+        - [ ] Documentação impactada atualizada
+        - [ ] Memória/histórico revisados se necessário
+        - [ ] Workflows e templates impactados revisados
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Notas Técnicas
+      description: Informações técnicas relevantes sobre o pacote (opcional)
+      placeholder: |
+        - Agents afetados
+        - Skills afetadas
+        - Templates afetados
+        - Ajustes em workflow
+        - Dependências de governança
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Diagramas / Referências
+      description: Links ou diagramas úteis para explicar a proposta (opcional)
+      placeholder: |
+        Cole aqui links para Figma, imagens ou descrições de UI/UX
+
+  - type: dropdown
+    id: estimated-effort
+    attributes:
+      label: Estimativa de Esforço
+      description: Estimativa inicial (pode ser refinada)
+      options:
+        - XS (1-2 horas)
+        - S (3-8 horas)
+        - M (1-2 dias)
+        - L (3-5 dias)
+        - XL (1-2 semanas)
+        - XXL (2+ semanas)
+        - A definir
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Áreas Relacionadas
+      description: Marque as áreas afetadas por esta proposta
+      options:
+        - label: Agents
+        - label: Skills
+        - label: Templates
+        - label: Memória
+        - label: Workflows
+        - label: Documentação
+        - label: Governança transversal
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referências
+      description: Links para documentação, issues relacionadas, PRs, etc.
+      placeholder: |
+        - Documento relacionado: README.md / AGENTS.md / ONBOARD.md
+        - Issue relacionada: #123
+        - PR relacionado: #456
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist do Solicitante
+      description: Confirme que você verificou os seguintes itens
+      options:
+        - label: Verifiquei que esta funcionalidade não está duplicada em outra issue
+          required: true
+        - label: Consultei README, ONBOARD ou CONTRIBUTING antes de abrir esta issue
+          required: true
+        - label: Esta proposta está alinhada com o objetivo e a governança do pacote
+          required: true

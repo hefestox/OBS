@@ -1,48 +1,78 @@
-name: Publish Image to GHCR
+name: OBS CI
 
 on:
   push:
-    branches: ["main"]
-
-permissions:
-  contents: read
-  packages: write
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build_and_push:
-    name: Build and Push to GHCR
+  validate-structure:
+    name: Validate Project Structure
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Normalize image name
-        id: image
+      - name: Validate required project files
         run: |
-          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          set -e
+          test -f README.md
+          test -f requirements.txt
+          test -f Dockerfile
+          test -f docker-compose.yml
+          test -f docker-stack.yml
+          test -f dashboard.py
+          test -f CookieManager.py
+          test -d .github/agents
+          test -d .github/skills
+          test -d .github/workflows
+          test -d .github/ISSUE_TEMPLATE
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ github.sha }}
-
-      - name: Trigger Portainer stack update
+      - name: Validate issue templates exist
         run: |
-          curl -fsSLk -X POST "${{ vars.WEBHOOK_URL }}"
+          set -e
+          test -f .github/ISSUE_TEMPLATE/01-feature-request.yml
+          test -f .github/ISSUE_TEMPLATE/02-bug-report.yml
+          test -f .github/ISSUE_TEMPLATE/03-technical-task.yml
+          test -f .github/ISSUE_TEMPLATE/04-documentation.yml
+          test -f .github/ISSUE_TEMPLATE/05-testing.yml
+
+  lint-python:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile dashboard.py
+          python -m py_compile CookieManager.py
+
+  validate-docker:
+    name: Validate Docker Configuration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose syntax
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Validate docker-stack syntax
+        run: docker compose -f docker-stack.yml config --quiet
