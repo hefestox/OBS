@@ -62,6 +62,29 @@ jobs:
           python -m py_compile dashboard.py
           python -m py_compile CookieManager.py
 
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run P0 hardening gate with coverage
+        run: pytest -q tests/test_p0_hardening.py --cov=dashboard --cov-fail-under=20
+
+      - name: Run full pytest suite
+        run: pytest -q
+
   validate-docker:
     name: Validate Docker Configuration
     runs-on: ubuntu-latest

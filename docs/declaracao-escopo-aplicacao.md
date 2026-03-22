@@ -221,6 +221,48 @@ Os itens abaixo **não fazem parte** do escopo atual da aplicação:
 
 ---
 
+## 10.1 Gates de aceite formal
+
+| Gate | Objetivo | Critério de entrada | Evidência mínima esperada | Owner primário | Status |
+|---|---|---|---|---|---|
+| G0 — Escopo congelado | Confirmar fronteiras e riscos | PRD com escopo dentro/fora, premissas e restrições revisados | `docs/declaracao-escopo-aplicacao.md` versionado com aprovação registrada | BA | Em andamento |
+| G1 — Arquitetura alinhada | Garantir viabilidade técnica | ARD alinhado ao template padrão, com componentes, integração, implantação e capacidade | `docs/system-design.md` atualizado + matriz PRD↔ARD | BA + Tech Lead | Em andamento |
+| G2 — Dependências UX/DS | Garantir consistência de interface | Documento de Design System referenciado no ARD (ou lacuna formalizada) | seção "Referência ao Design System" no ARD + referência a `docs/design-system.md` (quando criado) + links (Figma/Storybook) ou pendência explícita | UX Expert | **Parcial (CR-06 concluído com pendências visuais)** |
+| G3 — Qualidade funcional | Validar requisitos críticos | Casos de teste e evidências para blocos críticos (auth, bot, financeiro, infraestrutura) | Evidências de execução QA + checklist de aceite preenchido (incluindo validação frontend quando aplicável) | QA Expert | **Reprovado (CR-07 revalidado, frontend bloqueado)** |
+| G4 — Capacidade e dados | Validar sustentação operacional | Retorno de exaustão QA e plano de expansão de banco incorporados | Resultado de teste de carga/exaustão + atualização de dimensionamento app/DB | QA Expert + DBA | **Pendente** |
+| G5 — Fechamento executivo | Autorizar release formal | Divergências tratadas ou aceitas com exceção formal | Registro em `templates/aprovacao-final-tech-lead-template.md` | Tech Lead | **Pendente** |
+
+## 10.2 Dependências formais BA/SD/QA/UX/DBA
+
+| Disciplina | Dependência esperada | Artefato/evidência |
+|---|---|---|
+| BA | PRD consolidado e rastreável | `docs/declaracao-escopo-aplicacao.md` |
+| SD (arquitetura) | System Design sincronizado com escopo vigente | `docs/system-design.md` com cobertura das seções obrigatórias do template; uso direto de `templates/system-design-template.md` ainda pendente (exceção justificada) |
+| QA | Validação funcional e frontend (quando aplicável) | `templates/qa-validacao-frontend-template.md` + evidências de teste (status atual: **reprovado — CR-07 revalidado em `review/2026-03-22-2358-qa-validacao-frontend-cr07-revalidacao.md`**) |
+| UX | Design System referenciado para interface | Referência explícita a `docs/design-system.md` + links de Figma/Storybook/evidências visuais no ARD (status atual: **parcial — CR-06 concluído com pendências visuais**) |
+| DBA | Plano de capacidade e expansão da persistência | Handoff DBA incorporado no ARD (status atual: **pendente**) |
+
+## 10.3 Rastreabilidade requisito -> evidência esperada (blocos críticos)
+
+| Bloco crítico | Requisitos PRD | Evidência esperada para aceite formal | Status |
+|---|---|---|---|
+| Autenticação | F-001, F-002, F-003, NF-005 | Evidência de login válido, recuperação por `sid`, logout invalidando sessão e tentativa de reuse negada | Parcial (critério definido; evidência QA pendente) |
+| Bot de trading | F-011 a F-018, F-057, NF-001, NF-003, NF-009, NF-010 | Logs e/ou testes demonstrando entrada/saída conforme regras, cooldown, min hold, limite de pares e tolerância a falhas por usuário | Parcial (execução contínua existe; suíte automatizada pendente) |
+| Financeiro | F-030 a F-037, F-043 | Evidência de fluxo PENDING->APPROVED/REJECTED, lançamentos corretos em `ledger`, bloqueio de pagamento fora de status e exibição de endereço de depósito | Parcial (fluxo implementado; evidência formal QA pendente) |
+| Infraestrutura | F-050 a F-056, NF-007, NF-008 | Evidência de deploy Compose/Swarm, rotação de logs, validação CI (`py_compile`), retry e cache de exchange funcionando | Parcial (estrutura existe; teste de exaustão e checklist formal pendentes) |
+
+## 10.4 Matriz curta de rastreabilidade cruzada PRD <-> ARD
+
+| Bloco | PRD (declaração de escopo) | ARD (system design) | Situação |
+|---|---|---|---|
+| Auth e sessão | Seções 5.1, 9, 10 (Auth) | Seção template "Critérios de aceite e rastreabilidade" + seção técnica 7 | Alinhado com ressalva de hardening pendente |
+| Bot e risco | Seções 5.2, 9, 10 (Bot) | Seções template "Componentes", "Integrações", "Dimensionamento" + seções técnicas 4, 5, 6, 11 | Alinhado |
+| Financeiro/ledger | Seções 5.4, 10 (Financeiro) | Seções template "Componentes", "Integrações" + seção técnica 10 | Alinhado |
+| Infra/deploy | Seções 5.6, 8 | Seções template "Arquitetura de desenvolvimento/produção", "Implantação" + seção técnica 8 | Alinhado |
+| UX/Design System | Interface web implícita no escopo funcional | Seção template obrigatória "Referência ao Design System" + referência a `docs/design-system.md` | **Parcial (CR-06 concluído; CR-07 reprovado por evidências frontend)** |
+
+---
+
 ## 11. Rastreabilidade — Funcionalidades por componente
 
 ```mermaid
@@ -288,3 +330,16 @@ graph LR
 | Implementar saída por RSI (`USE_RSI_EXIT` em `check_exit_signal`) | 🔲 Pendente (dead code) |
 | Migrar hashing de senhas para bcrypt/argon2 | 🔲 Pendente (débito técnico de segurança) |
 | Tornar `DEPOSIT_ADDRESS_FIXED` configurável via env var | 🔲 Pendente |
+
+---
+
+## 13. Divergências PRD/ARD/implementação/evidências
+
+| Divergência | Origem | Impacto | Resolução proposta | Owner | Status |
+|---|---|---|---|---|---|
+| `USE_RSI_EXIT` declarado mas sem uso na lógica de saída | Implementação vs PRD (flags) | Pode gerar leitura incorreta de capacidade de estratégia | Implementar saída RSI em `check_exit_signal` ou remover flag do escopo ativo | Tech Lead | Pendente |
+| Hash de senha com SHA-256 puro (sem KDF) | Implementação vs requisito de segurança robusta | Risco elevado de comprometimento por brute force/offline cracking | Planejar migração para bcrypt/argon2 com estratégia de migração progressiva | Tech Lead + Security | Pendente |
+| `DEPOSIT_ADDRESS_FIXED` hardcoded | Implementação vs operação segura | Troca de carteira exige alteração de código/rebuild | Externalizar para variável de ambiente com validação e fallback seguro | DevOps + Tech Lead | Pendente |
+| Ausência de evidência formal consolidada QA para blocos críticos | Evidências de validação | Gate de aceite formal não pode ser fechado | Executar validação via template de QA frontend e evidências funcionais por bloco crítico | QA Expert | Pendente |
+| Plano formal de capacidade/expansão de banco não anexado por handoff | ARD/DBA | Risco de saturação sem plano de escala de persistência | Receber handoff DBA e atualizar ARD (dimensionamento DB) | DBA | Pendente |
+| ARD não preenchido diretamente no `templates/system-design-template.md` (somente aderência estrutural parcial com exceção documentada) | Governança PRD/ARD | Risco de variação documental e menor padronização de auditoria | Formalizar crosswalk template↔ARD ou migrar ARD para o template padrão em próxima rodada | BA + Tech Lead | Pendente |

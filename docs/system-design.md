@@ -3,8 +3,195 @@
 **Data:** 2026-03-21  
 **Versão:** 5.0.1  
 **Stack:** Python 3.11 · Streamlit · ccxt · SQLite · Docker / Docker Swarm  
+**Status:** Em evolução (hardening de documentação e aceite formal)
 
 ---
+
+## Identificação
+
+- Projeto ou produto: OBS Pro Bot
+- Responsável Business Analyst: **Pendente de nomeação formal no repositório**
+- Responsável técnico principal: Tech Lead
+- Data da versão: 2026-03-21
+- Status: Em evolução
+
+## Objetivo do documento
+
+- Problema de negócio endereçado: automatizar operação de trading spot com controle de risco, fluxo financeiro auditável e operação contínua.
+- Escopo contemplado: autenticação/sessão, operação de bot, financeiro (aportes/saques/ledger), implantação Compose/Swarm, observabilidade básica e premissas de capacidade.
+- Escopo fora: multi-exchange, futures/margin, ordens avançadas, app mobile nativo, 2FA, backtesting.
+- Premissas: Binance disponível, variáveis críticas injetadas por ambiente, volume persistente compartilhado entre web e bot.
+- Restrições: SQLite como persistência atual, 1 réplica do bot loop, hardening de segurança ainda pendente em pontos específicos.
+
+## Visão geral da solução
+
+- Resumo executivo da arquitetura: aplicação monolítica em `dashboard.py` operando em dois modos (Web UI e Bot Loop) com persistência SQLite compartilhada e integração ccxt/Binance.
+- Principais capacidades do sistema: execução automática de estratégia técnica, gestão financeira com aprovação administrativa, segregação por usuário e operação containerizada.
+- Principais riscos arquiteturais: limite de escala do SQLite, credenciais/senhas com hardening pendente, ausência de pacote formal consolidado de evidências QA para fechamento.
+
+## Componentes e responsabilidades
+
+| Componente | Responsabilidade | Entradas | Saídas | Dependências | Observações |
+|---|---|---|---|---|---|
+| Web UI (Streamlit) | Fluxos de usuário/admin, sessão, gestão financeira e monitoramento | Interações HTTP, token `sid`, dados de banco | Atualizações em tabelas de domínio, telas operacionais | `dashboard.py`, `CookieManager.py`, SQLite | Mesmo código-fonte do bot loop, com runtime distinto |
+| Bot Loop | Execução periódica da estratégia e controle de risco | Estado de usuário/par, dados de mercado, configurações | Ordens, atualização `bot_state`, `bot_trades`, `ledger`, logs | ccxt/Binance, SQLite, logger | Escalonamento horizontal não suportado no estado atual |
+| SQLite (`mvp_funds.db`) | Persistência transacional da aplicação | Escritas/leitura dos módulos web/bot | Estado consolidado de auth, bot e financeiro | Volume Docker compartilhado, `_DB_LOCK` | Limite de concorrência para crescimento elevado |
+| Logging (`bot.log`) | Rastreabilidade operacional | Eventos da aplicação | Arquivos rotativos 5MB x 2 | RotatingFileHandler | Base para evidência operacional e troubleshooting |
+| Exchange Adapter (ccxt) | Integração com Binance Spot | API keys, chamadas de ticker/ordens | Dados de mercado e execução | API Binance | Retry e cache parcial implementados |
+
+## Integrações e contratos
+
+| Integração | Tipo | Origem | Destino | Contrato ou protocolo | Risco principal |
+|---|---|---|---|---|---|
+| UI -> Backend local | Interna | Browser/Streamlit | `dashboard.py` (modo web) | HTTP sessão + query param `sid` | Sessão em URL demanda hardening operacional |
+| Bot -> Binance | Externa | Bot loop | Binance via ccxt | REST API (ticker/OHLCV/order) | Latência/instabilidade da exchange |
+| Web/Bot -> SQLite | Interna | Processos locais | `mvp_funds.db` | SQL transacional com WAL e lock | Contenção de escrita sob aumento de carga |
+
+## Arquitetura de desenvolvimento
+
+- Ambientes necessários: workstation com Python 3.11 e/ou Docker Compose.
+- Dependências locais: `requirements.txt`, acesso de rede à Binance para testes integrados.
+- Serviços de apoio: volume persistente para DB/log, variáveis de ambiente de sessão/admin.
+- Observações de setup: iniciar web e bot separadamente; validar presença de `SESSION_SECRET`.
+
+## Arquitetura de produção
+
+- Topologia: Docker Swarm com serviços `web` e `bot`, ambos consumindo a mesma imagem e volume.
+- Componentes implantados: Streamlit web (1 réplica), bot loop (1 réplica), volume `obs_data`.
+- Observabilidade: logs rotativos em arquivo + logs de container.
+- Alta disponibilidade e resiliência: resiliência lógica no loop (tratamento de erro por usuário), sem HA horizontal do bot atualmente.
+- Política de rollback: rollback via tag de imagem anterior no stack deploy.
+
+## Implantação
+
+### Desenvolvimento
+
+1. Configurar variáveis de ambiente mínimas (`SESSION_SECRET`, admin e paths).
+2. Subir serviços com `docker-compose up -d` ou executar modos web/bot manualmente.
+3. Validações após implantação: login funcional, bot loop ativo, escrita em DB/log.
+
+### Produção
+
+1. Publicar/selecionar imagem versionada no registry.
+2. Executar `docker stack deploy -c docker-stack.yml obs`.
+3. Validações após implantação: saúde dos serviços, atualização de estado do bot, fluxo financeiro básico e logs.
+
+## Dimensionamento da aplicação
+
+- Premissas de carga: dezenas de usuários simultâneos com ciclo de bot de 15s.
+- Volume esperado: 2 pares padrão por usuário (expansível), crescimento contínuo de `bot_trades` e `ledger`.
+- Estratégia de escala: vertical no estado atual; futura segregação de persistência e workers.
+- Gargalos conhecidos: SQLite para escrita concorrente, loop único de bot e dependência de API externa.
+- Plano de expansão: migração para PostgreSQL + revisão de particionamento funcional do bot (pendente de priorização).
+
+## Plano de dimensionamento e expansão do banco
+
+- Fonte do handoff do DBA: `review/2026-03-23-0012-parecer-dba-cr08-revalidacao-gate.md`.
+- Premissas de crescimento: aumento contínuo de histórico de trades/ledger por usuário, com padrão misto de leitura frequente e escrita transacional financeira.
+- Estratégia de capacidade: curto prazo com SQLite + WAL; médio prazo com PostgreSQL para carga transacional e expansão de concorrência.
+- Limites operacionais (baseline DBA): p95 de escrita financeira <= 250 ms; lock/timeout < 1% (janela 15 min); alerta de volume em 4 GB (warning) e 8 GB (crítico).
+- Gatilhos de expansão SQLite -> PostgreSQL: 2+ gatilhos por 7 dias consecutivos (p95 > 250 ms, lock >= 1%, DB >= 8 GB, necessidade de múltiplas réplicas de escrita).
+- Riscos de persistência: lock contention, aumento de latência de escrita/leitura e recuperação operacional limitada sem rotina de restore testada.
+- Ações recomendadas: concluir CR-09/CR-10 (append-only + backup/restore testável), instrumentar métricas de capacidade e executar dry-run de migração.
+
+## Seção obrigatória - Referência ao Design System
+
+- Existe frontend ou interface relevante?: **Sim**
+- Documento de Design System referenciado: `docs/design-system.md` (**publicado em baseline documental**)
+- Responsável UX: UX Expert
+- Link ou referência de Figma: **Pendente** (nenhuma referência de arquivo/projeto encontrada no repositório)
+- Link ou referência de Storybook.js: **Pendente** (nenhuma estrutura `.storybook`/stories encontrada no repositório)
+- Evidências visuais disponíveis: telas atuais via Streamlit mapeadas em `docs/design-system.md`, sem pacote de capturas versionadas anexado.
+- Divergências conhecidas entre System Design e Design System:
+  - Ausência de Figma, Storybook e imagens reais versionadas como fonte de governança visual contínua.
+  - Estados críticos possuem baseline textual no Design System, porém sem evidência visual anexada.
+- Plano de tratamento das divergências:
+  1. UX Expert manter `docs/design-system.md` sincronizado a cada mudança de interface.
+  2. Senior Developer estruturar Storybook.js para documentação de componentes e estados.
+  3. UX Expert vincular referência Figma quando houver fonte oficial disponível.
+  4. QA incorporar checklist visual no artefato `templates/qa-validacao-frontend-template.md`.
+
+## Critérios de aceite e rastreabilidade
+
+- Requisitos cobertos: blocos de autenticação, bot, financeiro e infraestrutura definidos no PRD.
+- Critérios de aceite por capacidade: definidos no PRD e refletidos neste ARD por arquitetura e fluxos operacionais.
+- Evidências de validação esperadas: execução QA funcional por blocos críticos + evidência de implantação e observabilidade.
+- Dependências de QA, UX e DBA:
+  - QA: validação formal (incluindo frontend quando aplicável) — **reprovada no gate CR-07 revalidado** (`review/2026-03-22-2358-qa-validacao-frontend-cr07-revalidacao.md`).
+  - UX: Design System referenciado em `docs/design-system.md`; validação visual completa (Figma/Storybook/evidências) — **parcial, com pendências abertas**.
+  - DBA: handoff de capacidade/expansão incorporado no CR-08, com pendências P1 de execução (append-only e backup/restore testado).
+
+## Matriz curta de rastreabilidade cruzada PRD <-> ARD
+
+| Bloco | Referência no PRD | Referência no ARD | Situação |
+|---|---|---|---|
+| Autenticação e sessão | Escopo funcional 5.1 + critérios seção 10 | Critérios/rastreabilidade + seção técnica 7 | Alinhado com hardening pendente |
+| Bot e risco operacional | Escopo 5.2 + critérios bot seção 10 | Componentes/integrações/dimensionamento + seções técnicas 4/5/6/11 | Alinhado |
+| Financeiro e ledger | Escopo 5.4 + critérios financeiro seção 10 | Componentes + fluxo financeiro técnico seção 10 | Alinhado |
+| Infra e operação | Escopo 5.6 + premissas/restrições | Arquitetura dev/prod + implantação + seção técnica 8 | Alinhado |
+| UX/Design System | Interface web no escopo | Seção obrigatória de Design System + `docs/design-system.md` | **Parcial** (documento publicado; pendências visuais abertas) |
+
+## Decisões e trade-offs
+
+| Decisão | Alternativas consideradas | Justificativa | Impacto |
+|---|---|---|---|
+| Persistir em SQLite no estágio atual | PostgreSQL desde início | Simplicidade operacional para MVP e custo reduzido | Limita escala e exige plano de migração |
+| Código único para web e bot | Serviços separados por código-base | Menor overhead de manutenção inicial | Acoplamento mais alto de responsabilidades |
+| Sessão por token em query param | Cookie HttpOnly/session server-side estrito | Compatibilidade com fluxo Streamlit atual | Exige maior atenção de segurança operacional |
+
+## Riscos e mitigações
+
+| Risco | Impacto | Probabilidade | Mitigação | Owner |
+|---|---|---|---|---|
+| Saturação de concorrência em SQLite | Alto | Média | Planejar migração para PostgreSQL com janela controlada | Tech Lead + DBA |
+| Hardening de credenciais/senhas incompleto | Alto | Alta | Eliminar defaults sensíveis e migrar hash para KDF | Tech Lead |
+| Governança visual incompleta (sem Figma/Storybook/evidências reais versionadas) | Médio | Alta | Evoluir baseline publicado em `docs/design-system.md` com artefatos visuais e Storybook | UX Expert |
+| Ausência de pacote final de evidências QA | Alto | Média | Consolidar evidências por bloco crítico antes do aceite | QA Expert |
+
+## Divergências PRD/ARD/implementação/evidências
+
+| Divergência | Origem | Impacto | Resolução proposta | Owner | Status |
+|---|---|---|---|---|---|
+| Flag `USE_RSI_EXIT` declarada sem efeito na lógica de saída | Implementação x PRD/ARD | Ambiguidade de escopo funcional e risco de interpretação | Implementar regra ou remover do escopo ativo até entrega | Tech Lead | Pendente |
+| Hash de senha em SHA-256 puro | Implementação x requisito de segurança robusta | Exposição a brute force/offline cracking | Migrar para bcrypt/argon2 com plano de transição | Tech Lead | Pendente |
+| `DEPOSIT_ADDRESS_FIXED` hardcoded | Implementação x operação segura | Mudança operacional exige rebuild e risco de erro manual | Externalizar em env var com validação | DevOps | Pendente |
+| Governança visual sem Figma/Storybook/evidências reais anexadas | ARD x dependência UX | Risco de divergência entre interface implementada e documentação visual | Publicar referências visuais e estruturar Storybook mantendo vínculo com `docs/design-system.md` | UX Expert + Senior Developer | Pendente |
+| Evidência QA consolidada para gates críticos não anexada | PRD/ARD x validação | Bloqueia fechamento formal de aceite | Executar e anexar evidências via templates de QA | QA Expert | Pendente |
+| Plano de capacidade agora formalizado, porém sem validação operacional completa de backup/restore e append-only | ARD x operação real de dados | Risco residual de recuperação/auditoria insuficiente em incidente | Executar CR-09/CR-10 com evidência e revalidar gate DBA para aceite pleno | DBA + Tech Lead | Parcial |
+
+## Diagramas Mermaid (governança e rastreabilidade)
+
+### Contexto e componentes (governança)
+
+```mermaid
+flowchart TD
+  U[Usuarios e atores] --> A[OBS Pro Bot]
+  A --> B[Web UI e Bot Loop]
+  B --> C[Binance via ccxt]
+  B --> D[SQLite e logs]
+```
+
+### Implantação e vínculo com Design System/aceite
+
+```mermaid
+flowchart LR
+  BA[Business Analyst] --> SD[System Design]
+  UX[UX Expert] --> DS[Design System]
+  DS --> SD
+  SD --> QA[Validacao QA]
+  SD --> TL[Aceite Tech Lead]
+```
+
+## Próximos passos
+
+1. Fechar pendências de referência UX (Design System) com links rastreáveis.
+2. Consolidar evidências QA para blocos críticos e gates formais.
+3. Incorporar handoff DBA para plano de expansão de banco e atualizar dimensionamento.
+4. Endereçar divergências de hardening de segurança antes do fechamento executivo.
+
+---
+
+## Anexo técnico existente (detalhamento preservado)
 
 ## 1. Visão geral
 
