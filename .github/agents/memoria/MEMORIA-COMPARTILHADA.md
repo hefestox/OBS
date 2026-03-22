@@ -262,6 +262,16 @@
 - Decisao final CR-08: **Reprovado**.
 - Bloqueio central: ausencia de convergencia de QA/UX frontend (Cypress, Figma, Storybook e evidencias visuais).
 
+## Sintese decisoria curta (OBS - operacao de PR CR-08)
+
+- Contexto: operacionalizacao da entrega em GitHub apos consolidacao CR-08 na branch `feature/p0-hardening-core`.
+- Evidencias:
+  - PR aberto: `https://github.com/hefestox/OBS/pull/3`;
+  - labels ativas: `enhancement`, `needs-review`;
+  - review request ativo para `hefestox`.
+- Restricao observada: tentativa de solicitar review para o autor (`salesadriano`) foi rejeitada pela API com `HTTP 422`, mantendo conformidade com regra da plataforma.
+- Decisao: manter PR aberto para review formal, sem alterar status executivo da entrega (permanece **Reprovado** ate convergencia dos gates).
+
 ## Riscos permanentes
 
 | Risco | Mitigacao permanente | Owner |
@@ -290,6 +300,7 @@
 - A revalidacao CR-07 e consolidacao CR-06/CR-07 foi registrada em `memoria/historico/2026-03-22-2354-revalidacao-cr07-e-consolidacao-cr06-cr07-obs.md`.
 - A revalidacao UX do CR-08 (status reprovado com plano de destravamento) foi registrada em `memoria/historico/2026-03-21-2359-revalidacao-ux-cr08-obs.md`.
 - A consolidacao CR-08 e fechamento Tech Lead (status reprovado) foi registrada em `memoria/historico/2026-03-22-0011-consolidacao-cr08-e-fechamento-tech-lead-obs.md`.
+- A operacao de PR CR-08 (labels + review request) foi registrada em `memoria/historico/2026-03-22-0039-operacao-pr-cr08-review-request-obs.md`.
 
 ## Fluxo estrutural do pacote
 
