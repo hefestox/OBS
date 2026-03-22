@@ -13,8 +13,6 @@ import os
 import sys
 import logging.handlers
 
-import sys
-
 _raw_argv = sys.argv[1:]
 BOT_MODE = "--bot" in _raw_argv and not any("streamlit" in a for a in _raw_argv)
 
