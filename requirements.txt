@@ -1,0 +1,17 @@
+streamlit
+pandas
+requests
+ccxt
+streamlit-autorefresh
+extra-streamlit-components
+psycopg2-binary
+bcrypt
+pytest
+pytest-cov
+anthropic
+
+
+
+
+
+
