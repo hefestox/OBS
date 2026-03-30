@@ -9,7 +9,9 @@ bcrypt
 pytest
 pytest-cov
 anthropic
-
+numpy
+ta
+python-dotenv
 
 
 
