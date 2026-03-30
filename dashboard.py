@@ -752,7 +752,12 @@ def _make_exchange(api_key, api_secret, testnet):
         # Binance fallback
         cfg = {
             "apiKey": api_key,
-            "options": {"defaultType": "spot", "recvWindow": 60000, "adjustForTimeDifference": False},
+            "options": {
+                "defaultType": "spot",
+                "recvWindow": 60000,
+                "adjustForTimeDifference": True,
+                "fetchCurrencies": False,
+            },
             "enableRateLimit": True,
         }
         if _credential_mode(api_secret) == "RSA":
