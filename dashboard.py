@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # =============================================================
-# OBS PRO BOT — VERSÃO 5.2.0 — BYBIT SUPPORT
+# OBS PRO BOT — VERSÃO 5.3.0 — BINANCE
 # =============================================================
 
 import sys
+import os
 import logging.handlers
 
 _raw_argv = sys.argv[1:]
@@ -79,11 +80,11 @@ USE_DOUBLE_ENGULFING_PATTERN = False
 USE_OUTSIDE_BAR_PATTERN = False
 USE_CANDLESTICK_CONFIRM = False
 SESSION_SECRET = "obspro-mude-essa-chave-2024"
-ANTHROPIC_API_KEY = "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"
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EXCHANGE_REBUILD_INTERVAL = 3600
 
-# ── BYBIT v5.2.0 ─────────────────────────────────────────────
-EXCHANGE_NAME = "bybit"  # troque para "binance" se quiser voltar
+# ── BINANCE v5.3.0 ───────────────────────────────────────────
+EXCHANGE_NAME = "binance"
 
 
 def db():
@@ -984,7 +985,7 @@ def run_bot_loop():
     init_db()
     log = logging.getLogger(__name__)
     log.info("=" * 60)
-    log.info(f"  OBS PRO BOT v5.2.0 — BYBIT")
+    log.info(f"  OBS PRO BOT v5.3.0 — BINANCE")
     log.info(f"  Exchange: {EXCHANGE_NAME.upper()}")
     log.info(f"  Pares: {', '.join(BOT_SYMBOLS)}")
     log.info(f"  TP: {TAKE_PROFIT*100:.2f}% | SL: {STOP_LOSS*100:.2f}%")
@@ -1059,7 +1060,7 @@ except:
     HAS_AUTOREFRESH = False
 
 init_db()
-st.set_page_config(page_title="OBS PRO — BOT v5.2.0 BYBIT", layout="wide")
+st.set_page_config(page_title="OBS PRO — BOT v5.3.0 BINANCE", layout="wide")
 
 
 def fetch_price_display(symbol):
@@ -1132,7 +1133,7 @@ with st.sidebar:
     if auto_ref and HAS_AUTOREFRESH:
         st_autorefresh(interval=ref_sec * 1000, key="ar")
 
-st.title(f"OBS PRO — BOT v5.2.0 🤖 [{EXCHANGE_NAME.upper()}]")
+st.title(f"OBS PRO — BOT v5.3.0 🤖 [{EXCHANGE_NAME.upper()}]")
 st.caption(f"Pares: {', '.join(BOT_SYMBOLS)} | TP {TAKE_PROFIT*100:.2f}% | SL {STOP_LOSS*100:.2f}% | Taxa/op: ${TRADE_FEE:.2f}")
 
 if not st.session_state.user:
@@ -1224,7 +1225,7 @@ with tabs[0]:
         else:
             par_filtro = st.selectbox("Filtrar por par", ["Todos"] + BOT_SYMBOLS)
             df_show = df_tr if par_filtro == "Todos" else df_tr[df_tr["symbol"] == par_filtro]
-            st.dataframe(df_show.tail(200), use_container_width=True)
+            st.dataframe(df_show.tail(200), width="stretch")
 
 with tabs[1]:
     bal = user_balance(user_id)
@@ -1263,7 +1264,7 @@ with tabs[3]:
         except Exception as e: st.error(str(e))
     rows = list_deposits(user_id=user_id)
     if rows:
-        st.dataframe(pd.DataFrame(rows, columns=["id","valor","txid","status","criado","revisado","nota"]), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows, columns=["id","valor","txid","status","criado","revisado","nota"]), width="stretch")
 
 with tabs[4]:
     st.subheader("💸 Solicitar saque")
@@ -1284,7 +1285,7 @@ with tabs[4]:
         except Exception as e: st.error(str(e))
     rows = list_withdrawals(user_id=user_id)
     if rows:
-        st.dataframe(pd.DataFrame(rows, columns=["id","valor","taxa","liquido","rede","endereco","txid_pago","status","criado","revisado","nota"]), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows, columns=["id","valor","taxa","liquido","rede","endereco","txid_pago","status","criado","revisado","nota"]), width="stretch")
 
 with tabs[5]:
     st.subheader("📄 Extrato")
@@ -1296,7 +1297,7 @@ with tabs[5]:
         conn.close()
     if df_led.empty: st.info("Sem movimentações.")
     else:
-        st.dataframe(df_led, use_container_width=True)
+        st.dataframe(df_led, width="stretch")
         st.download_button("⬇️ Baixar CSV", df_led.to_csv(index=False).encode(), "extrato.csv", "text/csv")
 
 with tabs[6]:
@@ -1339,7 +1340,7 @@ with tabs[6]:
                         client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
                         resp = client.messages.create(
                             model="claude-sonnet-4-20250514", max_tokens=1000,
-                            system=f"Você é um assistente do OBS PRO BOT v5.2.0 usando {EXCHANGE_NAME.upper()}. Responda em português, máximo 6 linhas.",
+                            system=f"Você é um assistente do OBS PRO BOT v5.3.0 usando {EXCHANGE_NAME.upper()}. Responda em português, máximo 6 linhas.",
                             messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.agent_messages]
                         )
                         resposta = resp.content[0].text
@@ -1358,7 +1359,7 @@ if role == "admin":
         st.subheader("⚙️ Administração")
         st.markdown("### 👥 Usuários")
         ul = list_users()
-        if ul: st.dataframe(pd.DataFrame(ul, columns=["id","username","role","criado","codigo"]), use_container_width=True)
+        if ul: st.dataframe(pd.DataFrame(ul, columns=["id","username","role","criado","codigo"]), width="stretch")
         st.divider()
         st.markdown("### 💰 Aportes pendentes")
         dep_all = list_deposits()
@@ -1366,7 +1367,7 @@ if role == "admin":
         pend_d = dep_df[dep_df["status"] == "PENDING"]
         if pend_d.empty: st.info("Nenhum aporte pendente.")
         else:
-            st.dataframe(pend_d, use_container_width=True)
+            st.dataframe(pend_d, width="stretch")
             did = st.number_input("ID do depósito", min_value=1, step=1, key="did")
             dn = st.text_input("Nota", key="dn")
             c1, c2 = st.columns(2)
@@ -1389,7 +1390,7 @@ if role == "admin":
                 LEFT JOIN user_keys uk ON uk.user_id=bs.user_id
                 ORDER BY u.username, bs.symbol""", conn)
             conn.close()
-        if not df_bots.empty: st.dataframe(df_bots, use_container_width=True)
+        if not df_bots.empty: st.dataframe(df_bots, width="stretch")
         st.divider()
         st.markdown("### ⚡ Controle de Bot por Usuário")
         for u in list_users():
