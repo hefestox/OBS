@@ -1,36 +1,59 @@
 # Ambiente
-.env
-.env.*
-!.env.example
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg
-*.egg-info/
-.eggs/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-
-# Virtual envs
-.venv/
 venv/
 env/
-
-# Build artefacts
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# IDE / OS
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 .DS_Store
-/mvp_funds.db
-/paper_trades.csv
+
+# Logs
+logs/
+*.log
+
+# Data
+*.db
+*.sqlite
+*.sqlite3
+data/
+*.csv
+
+# Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Railway
+.railway/
+
+# Docker
+.dockerignore

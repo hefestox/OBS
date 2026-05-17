@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUMPS - Crypto Trading Bot com IA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🚀 PUMPS</h1>
+                <p>Crypto Trading Bot com IA</p>
+            </div>
+            <div class="header-status">
+                <span id="status" class="status-badge">●</span>
+                <span id="status-text">Conectando...</span>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <button class="nav-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="nav-btn" onclick="showTab('prices')">💹 Preços</button>
+            <button class="nav-btn" onclick="showTab('pumps')">⚡ Pumps</button>
+            <button class="nav-btn" onclick="showTab('analysis')">🤖 Análise IA</button>
+            <button class="nav-btn" onclick="showTab('alerts')">🔔 Alertas</button>
+        </nav>
+
+        <!-- Content -->
+        <main class="main">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <h2>Visão Geral de Mercado</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h3>Bitcoin</h3>
+                        <p class="price" id="btc-price">$0.00</p>
+                        <p class="change" id="btc-change">+0.00%</p>
+                    </div>
+                    <div class="card">
+                        <h3>Ethereum</h3>
+                        <p class="price" id="eth-price">$0.00</p>
+                        <p class="change" id="eth-change">+0.00%</p>
+                    </div>
+                    <div class="card">
+                        <h3>Status API</h3>
+                        <p id="api-status">Verificando...</p>
+                        <button onclick="checkHealth()" class="btn-small">Atualizar</button>
+                    </div>
+                    <div class="card">
+                        <h3>Pumps Detectados</h3>
+                        <p class="big-number" id="pump-count">0</p>
+                        <button onclick="loadPumps()" class="btn-small">Recarregar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prices Tab -->
+            <div id="prices" class="tab-content">
+                <h2>💹 Preços em Tempo Real</h2>
+                <input type="text" id="symbol-input" placeholder="Símbolo (ex: BTCUSDT)" class="input">
+                <button onclick="getPriceData()" class="btn">Buscar Preço</button>
+                <div id="price-result" class="result"></div>
+            </div>
+
+            <!-- Pumps Tab -->
+            <div id="pumps" class="tab-content">
+                <h2>⚡ Radar de Pumps</h2>
+                <button onclick="loadPumps()" class="btn">Atualizar Pumps</button>
+                <div id="pumps-list" class="list"></div>
+            </div>
+
+            <!-- Analysis Tab -->
+            <div id="analysis" class="tab-content">
+                <h2>🤖 Análise com IA</h2>
+                <div class="form-group">
+                    <input type="text" id="analyze-symbol" placeholder="Símbolo (ex: ETHUSDT)" class="input">
+                    <button onclick="analyzeSymbol()" class="btn">Analisar com IA</button>
+                </div>
+                <div id="analysis-result" class="result"></div>
+            </div>
+
+            <!-- Alerts Tab -->
+            <div id="alerts" class="tab-content">
+                <h2>🔔 Alertas</h2>
+                <button onclick="loadAlerts()" class="btn">Recarregar Alertas</button>
+                <div id="alerts-list" class="list"></div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>PUMPS © 2026 - Crypto Trading Bot com IA</p>
+            <p>⚠️ Disclaimer: Apenas para fins educacionais. Não é aconselhamento financeiro.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

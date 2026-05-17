@@ -1,77 +1,213 @@
-# OBS PRO BOT
+# 🚀 PUMPS - Crypto Trading Bot com IA
 
-## Rodar com Docker Compose (local)
+**WebSocket Binance em tempo real + OpenAI + Radar de Pumps + Dashboard Profissional**
 
-O projeto sobe em dois serviços:
-- `web`: interface Streamlit
-- `bot`: loop do bot (`python dashboard.py --bot`)
+## ✨ Features
 
-### 1) Configurar variáveis
+- 🔴 **WebSocket Binance** - Conecta em tempo real com Binance API
+- 🤖 **IA OpenAI** - Análise inteligente de moedas com GPT-4
+- ⚡ **Radar de Pumps** - Detecta pump and dump automático
+- 📊 **TradingView** - Gráficos integrados
+- 🌐 **API REST** - 10+ endpoints prontos
+- 🎨 **Dashboard** - Interface web responsiva e profissional
+- 🐳 **Docker** - Containerizado pronto para produção
+- 🚂 **Railway Ready** - Deploy em 1 clique
 
+## 📋 Requisitos
+
+- Python 3.11+
+- API Key Binance (testnet ou real)
+- API Key OpenAI
+- Docker (opcional)
+
+## 🚀 Quick Start (Local)
+
+### 1. Clonar repositório
+```bash
+git clone https://github.com/hefestox/OBS.git
+cd OBS
+```
+
+### 2. Criar ambiente virtual
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\\Scripts\\activate  # Windows
+```
+
+### 3. Instalar dependências
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configurar variáveis
 ```bash
 cp .env.example .env
-# edite a .env com valores fortes
+# Editar .env com suas credenciais
 ```
 
-### 2) Subir serviços com imagem publicada
-
+### 5. Rodar aplicação
 ```bash
-docker compose pull
-docker compose up -d
+python app.py
+# Acessar: http://localhost:5000
 ```
 
-### 3) Acessar interface
+## 🐳 Deploy com Docker
 
-- Abra: `http://localhost:8501`
-
-### 4) Ver logs do bot
-
+### Local
 ```bash
-docker compose logs -f bot
+docker build -t pumps:latest .
+docker run -p 5000:5000 --env-file .env pumps:latest
 ```
 
-### 5) Parar serviços
+### Railway
+1. Conectar repositório no [Railway](https://railway.app)
+2. Adicionar variáveis de ambiente
+3. Deploy automático! 🎉
 
+## 📚 API Endpoints
+
+### Health Check
 ```bash
-docker compose down
+GET /api/health
 ```
 
-## Persistência de dados
+### Preços em Tempo Real
+```bash
+GET /api/prices?symbol=BTCUSDT
+```
 
-Banco SQLite (`mvp_funds.db`) e log (`bot.log`) ficam no volume nomeado `obs_data` em `/app/data`.
+### Pumps Detectados
+```bash
+GET /api/pumps
+```
 
-## Publicacao de imagem via GitHub Actions + GHCR
+### Análise IA
+```bash
+POST /api/analyze
+Body: {"symbol": "ETHUSDT"}
+```
 
-O workflow `.github/workflows/main.yml` e disparado em push na branch `main` e executa:
+### Sentimento de Mercado
+```bash
+GET /api/sentiment
+```
 
-1. **build_and_push**
-   - `docker/setup-buildx-action`
-   - `docker/login-action` no `ghcr.io`
-   - `docker/build-push-action` publicando:
-      - `ghcr.io/<owner>/<repo>:latest`
-      - `ghcr.io/<owner>/<repo>:<sha>`
+### Alertas Ativos
+```bash
+GET /api/alerts
+```
 
-O deploy da stack nao e feito pelo GitHub Actions. A atualizacao da aplicacao deve ser feita pelo Portainer, consumindo a imagem publicada no GHCR.
+## 📁 Estrutura do Projeto
 
-### Secrets necessários no GitHub
+```
+.
+├── app.py                 # Aplicação Flask principal
+├── requirements.txt       # Dependências
+├── .env.example          # Template de config
+├── Dockerfile            # Container
+├── railway.json          # Config Railway
+│
+├── src/                  # Módulos principais
+│   ├── binance_client.py    # WebSocket Binance
+│   ├── openai_analyzer.py   # IA OpenAI
+│   ├── pump_detector.py     # Detector de pumps
+│   └── utils.py             # Funções auxiliares
+│
+├── api/                  # Rotas da API
+│   ├── routes.py           # Endpoints
+│   └── websocket.py        # WebSocket (opcional)
+│
+├── templates/            # HTML
+│   ├── index.html          # Dashboard
+│   ├── chart.html          # Gráficos
+│   └── alerts.html         # Alertas
+│
+└── static/               # CSS/JS/Imagens
+    ├── css/
+    │   └── style.css
+    ├── js/
+    │   ├── dashboard.js
+    │   ├── websocket.js
+    │   └── chart.js
+    └── img/
+```
 
-- nenhum secret adicional e necessario para o push no GHCR alem do `GITHUB_TOKEN` fornecido pelo proprio GitHub Actions
+## 🔧 Configuração
 
-### Pré-requisitos no Portainer / Swarm
+### Binance API
+1. Ir em [Binance API](https://www.binance.com/en/account/api-management)
+2. Criar nova key (testnet recomendado)
+3. Copiar API Key e Secret para `.env`
 
-- registry `ghcr.io` configurado no Portainer, se a imagem for privada
-- stack configurada a partir de `docker-stack.yml`, usando `ghcr.io/<owner>/<repo>:latest` ou uma tag SHA especifica
-- variaveis obrigatorias da aplicacao preenchidas no Portainer
+### OpenAI API
+1. Ir em [OpenAI](https://platform.openai.com)
+2. Criar API Key
+3. Adicionar em `.env`
 
-### Arquivo recomendado para stack
+## 📊 Dashboard
 
-Use `docker-stack.yml` para deploy no Docker Swarm via Portainer.
+Acesse em `http://localhost:5000` após iniciar:
 
-Variaveis esperadas pela stack:
+- **Home**: Visão geral de mercado
+- **Gráficos**: Preços em tempo real
+- **Pumps**: Moedas em pump
+- **Alertas**: Notificações ativas
+- **Análise IA**: Recomendações do GPT-4
 
-- `SWARM_NODE_HOSTNAME`
-- `SESSION_SECRET`
-- `DEFAULT_ADMIN_USER`
-- `DEFAULT_ADMIN_PASS`
-- `IMAGE_TAG` opcional, com padrao `latest`
-- `OBS_IMAGE` opcional, com padrao `ghcr.io/hefestox/obs`
+## 🚨 Alertas Suportados
+
+- 📈 Pump detectado
+- 💥 Alta volatilidade
+- 💰 Limiar de preço atingido
+- 📉 Queda significativa
+- 🔊 Volume anormal
+
+## ⚙️ Variáveis de Ambiente
+
+```env
+# Flask
+FLASK_ENV=development
+PORT=5000
+
+# Binance
+BINANCE_API_KEY=xxx
+BINANCE_API_SECRET=xxx
+BINANCE_TESTNET=true
+
+# OpenAI
+OPENAI_API_KEY=sk-xxx
+OPENAI_MODEL=gpt-4
+
+# Pump Detection
+PUMP_THRESHOLD=5.0
+PUMP_TIME_WINDOW=60
+MIN_VOLUME=10000
+```
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Por favor:
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📝 Licença
+
+MIT - veja [LICENSE](LICENSE) para detalhes
+
+## 📧 Suporte
+
+Encontre um bug ou tem uma sugestão? Abra uma [Issue](https://github.com/hefestox/OBS/issues)
+
+## 🙌 Créditos
+
+Desenvolvido com ❤️ para traders de crypto
+
+---
+
+**⭐ Se foi útil, deixe uma star!**
