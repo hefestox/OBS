@@ -1,89 +1,106 @@
 # 🚀 PUMPS - Crypto Trading Bot com IA
 
-**WebSocket Binance em tempo real + OpenAI + Radar de Pumps + Dashboard Profissional**
+**WebSocket Binance em tempo real + OpenAI GPT + Radar de Pumps + Dashboard Profissional**
+
+> 🎯 **Pronto para rodar no Railway com um clique!**
 
 ## ✨ Features
 
 - 🔴 **WebSocket Binance** - Conecta em tempo real com Binance API
-- 🤖 **IA OpenAI** - Análise inteligente de moedas com GPT-4
+- 🤖 **IA OpenAI** - Análise inteligente de moedas com GPT (gpt-3.5-turbo / gpt-4)
 - ⚡ **Radar de Pumps** - Detecta pump and dump automático
-- 📊 **TradingView** - Gráficos integrados
-- 🌐 **API REST** - 10+ endpoints prontos
-- 🎨 **Dashboard** - Interface web responsiva e profissional
-- 🐳 **Docker** - Containerizado pronto para produção
+- 📊 **Dashboard Web** - Interface responsiva e profissional
+- 🌐 **API REST** - 6+ endpoints prontos
+- 🐳 **Docker** - Containerizado e otimizado
 - 🚂 **Railway Ready** - Deploy em 1 clique
+- 📈 **Modo Demo** - Funciona sem credenciais (para testes)
 
-## 📋 Requisitos
+## 🎯 Deploy Rápido no Railway
 
+### Opção 1: Botão Deploy (Mais Fácil)
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/hefestox/OBS)
+
+### Opção 2: Manual
+
+1. **Criar conta em [Railway.app](https://railway.app)**
+2. **Conectar GitHub** (autorizar Railway acessar seus repos)
+3. **Selecionar repositório** `hefestox/OBS`
+4. **Adicionar variáveis de ambiente**:
+   ```
+   FLASK_ENV=production
+   BINANCE_API_KEY=sua_key
+   BINANCE_API_SECRET=seu_secret
+   OPENAI_API_KEY=sk-xxx
+   ```
+5. **Deploy automático!** ✅
+
+## 🏃 Rodar Localmente
+
+### Pré-requisitos
 - Python 3.11+
-- API Key Binance (testnet ou real)
-- API Key OpenAI
-- Docker (opcional)
+- Git
 
-## 🚀 Quick Start (Local)
+### Instalação
 
-### 1. Clonar repositório
 ```bash
+# Clonar
 git clone https://github.com/hefestox/OBS.git
 cd OBS
-```
 
-### 2. Criar ambiente virtual
-```bash
+# Ambiente virtual
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # ou
-venv\\Scripts\\activate  # Windows
-```
+venv\Scripts\activate  # Windows
 
-### 3. Instalar dependências
-```bash
+# Dependências
 pip install -r requirements.txt
-```
 
-### 4. Configurar variáveis
-```bash
+# Configurar
 cp .env.example .env
 # Editar .env com suas credenciais
-```
 
-### 5. Rodar aplicação
-```bash
+# Rodar
 python app.py
-# Acessar: http://localhost:5000
+
+# Acessar
+# http://localhost:5000
 ```
 
-## 🐳 Deploy com Docker
+## 🔑 Obter Credenciais
 
-### Local
-```bash
-docker build -t pumps:latest .
-docker run -p 5000:5000 --env-file .env pumps:latest
-```
+### Binance API
+1. Ir em [API Management](https://www.binance.com/en/account/api-management)
+2. Criar nova chave (testnet recomendado para testes)
+3. Copiar `API Key` e `Secret Key`
 
-### Railway
-1. Conectar repositório no [Railway](https://railway.app)
-2. Adicionar variáveis de ambiente
-3. Deploy automático! 🎉
+### OpenAI API
+1. Ir em [Platform OpenAI](https://platform.openai.com/api-keys)
+2. Criar nova chave
+3. Copiar chave (começa com `sk-`)
 
-## 📚 API Endpoints
+## 📊 API Endpoints
 
 ### Health Check
 ```bash
 GET /api/health
 ```
+Response: `{"status": "healthy", "components": {...}}`
 
 ### Preços em Tempo Real
 ```bash
 GET /api/prices?symbol=BTCUSDT
 ```
+Response: `{"symbol": "BTCUSDT", "data": {"price": 45000.00, ...}}`
 
 ### Pumps Detectados
 ```bash
 GET /api/pumps
 ```
+Response: `{"pumps": [...], "count": 5}`
 
-### Análise IA
+### Análise com IA
 ```bash
 POST /api/analyze
 Body: {"symbol": "ETHUSDT"}
@@ -94,120 +111,137 @@ Body: {"symbol": "ETHUSDT"}
 GET /api/sentiment
 ```
 
-### Alertas Ativos
+### Alertas
 ```bash
 GET /api/alerts
 ```
 
-## 📁 Estrutura do Projeto
+## 📁 Estrutura
 
 ```
 .
-├── app.py                 # Aplicação Flask principal
-├── requirements.txt       # Dependências
-├── .env.example          # Template de config
-├── Dockerfile            # Container
-├── railway.json          # Config Railway
+├── app.py                    # Aplicação principal (PRONTO PARA RAILWAY)
+├── Dockerfile                # Build Docker otimizado
+├── railway.json              # Configuração Railway
+├── requirements.txt          # Dependências
+├── .env.example              # Template de variáveis
 │
-├── src/                  # Módulos principais
-│   ├── binance_client.py    # WebSocket Binance
-│   ├── openai_analyzer.py   # IA OpenAI
-│   ├── pump_detector.py     # Detector de pumps
-│   └── utils.py             # Funções auxiliares
+├── src/                      # Módulos Python
+│   ├── binance_client.py     # WebSocket Binance
+│   ├── openai_analyzer.py    # IA OpenAI
+│   ├── pump_detector.py      # Detector de pumps
+│   └── utils.py              # Funções auxiliares
 │
-├── api/                  # Rotas da API
-│   ├── routes.py           # Endpoints
-│   └── websocket.py        # WebSocket (opcional)
+├── templates/                # HTML
+│   └── index.html            # Dashboard
 │
-├── templates/            # HTML
-│   ├── index.html          # Dashboard
-│   ├── chart.html          # Gráficos
-│   └── alerts.html         # Alertas
-│
-└── static/               # CSS/JS/Imagens
-    ├── css/
-    │   └── style.css
-    ├── js/
-    │   ├── dashboard.js
-    │   ├── websocket.js
-    │   └── chart.js
-    └── img/
+└── static/                   # CSS/JS
+    ├── css/style.css         # Estilos
+    └── js/dashboard.js       # JavaScript
 ```
 
-## 🔧 Configuração
+## 🔧 Modo Demo
 
-### Binance API
-1. Ir em [Binance API](https://www.binance.com/en/account/api-management)
-2. Criar nova key (testnet recomendado)
-3. Copiar API Key e Secret para `.env`
+A aplicação funciona em **modo demo** mesmo sem credenciais:
+- Retorna dados simulados realistas
+- Perfeito para testes e desenvolvimento
+- Nenhum erro ao acessar os endpoints
 
-### OpenAI API
-1. Ir em [OpenAI](https://platform.openai.com)
-2. Criar API Key
-3. Adicionar em `.env`
+## 🚀 Customizações Comuns
 
-## 📊 Dashboard
+### Adicionar Discord Webhook
+```python
+# Em app.py, adicionar:
+import requests
 
-Acesse em `http://localhost:5000` após iniciar:
-
-- **Home**: Visão geral de mercado
-- **Gráficos**: Preços em tempo real
-- **Pumps**: Moedas em pump
-- **Alertas**: Notificações ativas
-- **Análise IA**: Recomendações do GPT-4
-
-## 🚨 Alertas Suportados
-
-- 📈 Pump detectado
-- 💥 Alta volatilidade
-- 💰 Limiar de preço atingido
-- 📉 Queda significativa
-- 🔊 Volume anormal
-
-## ⚙️ Variáveis de Ambiente
-
-```env
-# Flask
-FLASK_ENV=development
-PORT=5000
-
-# Binance
-BINANCE_API_KEY=xxx
-BINANCE_API_SECRET=xxx
-BINANCE_TESTNET=true
-
-# OpenAI
-OPENAI_API_KEY=sk-xxx
-OPENAI_MODEL=gpt-4
-
-# Pump Detection
-PUMP_THRESHOLD=5.0
-PUMP_TIME_WINDOW=60
-MIN_VOLUME=10000
+def send_alert(message):
+    webhook = os.getenv('DISCORD_WEBHOOK')
+    if webhook:
+        requests.post(webhook, json={"content": message})
 ```
 
-## 🤝 Contribuição
+### Integrar Banco de Dados
+```bash
+pip install flask-sqlalchemy
+```
 
-Contribuições são bem-vindas! Por favor:
+### Adicionar Autenticação
+```bash
+pip install flask-jwt-extended
+```
 
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+## 📊 Variáveis de Ambiente
+
+| Variável | Descrição | Obrigatório |
+|----------|-----------|-------------|
+| `FLASK_ENV` | development/production | ✅ |
+| `PORT` | Porta (padrão 5000) | ❌ |
+| `BINANCE_API_KEY` | Chave Binance | ❌ |
+| `BINANCE_API_SECRET` | Secret Binance | ❌ |
+| `BINANCE_TESTNET` | true/false | ❌ |
+| `OPENAI_API_KEY` | Chave OpenAI | ❌ |
+| `OPENAI_MODEL` | gpt-3.5-turbo/gpt-4 | ❌ |
+| `PUMP_THRESHOLD` | % aumento para pump | ❌ |
+| `PUMP_TIME_WINDOW` | Minutos para análise | ❌ |
+| `MIN_VOLUME` | Volume mínimo USDT | ❌ |
+
+## 🐳 Docker Local
+
+```bash
+# Build
+docker build -t pumps:latest .
+
+# Run
+docker run -p 5000:5000 --env-file .env pumps:latest
+
+# Acessar
+# http://localhost:5000
+```
+
+## 📈 Performance no Railway
+
+- **RAM**: 512MB (suficiente)
+- **CPU**: 50m (suficiente)
+- **Replicas**: 1
+- **Timeout**: 120s
+- **Health Check**: Automático
+
+## 🆘 Troubleshooting
+
+### Erro "ModuleNotFoundError"
+```bash
+pip install -r requirements.txt
+```
+
+### Erro "Connection refused"
+- Verificar se `BINANCE_API_KEY` está correto
+- Ou deixar em branco para modo demo
+
+### Erro "Invalid API Key"
+- Regenerar chave em Binance/OpenAI
+- Copiar valor correto em Railway (sem espaços)
+
+## 📚 Documentação Adicional
+
+- [Binance API Docs](https://binance-docs.github.io/apidocs/)
+- [OpenAI API Docs](https://platform.openai.com/docs/api-reference)
+- [Railway Docs](https://railway.app/docs)
+- [Flask Docs](https://flask.palletsprojects.com/)
 
 ## 📝 Licença
 
-MIT - veja [LICENSE](LICENSE) para detalhes
+MIT - Use livremente em seus projetos
 
-## 📧 Suporte
+## 💡 Suporte
 
-Encontre um bug ou tem uma sugestão? Abra uma [Issue](https://github.com/hefestox/OBS/issues)
+- 📧 Issues no GitHub
+- 🐛 Reporte bugs
+- 💬 Sugestões são bem-vindas
 
-## 🙌 Créditos
-
-Desenvolvido com ❤️ para traders de crypto
+## ⭐ Se foi útil, deixe uma star!
 
 ---
 
-**⭐ Se foi útil, deixe uma star!**
+**Desenvolvido com ❤️ para traders de cripto**
+
+**Pronto para Railway! 🚀**

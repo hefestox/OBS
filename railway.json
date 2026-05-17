@@ -4,12 +4,13 @@
     "builder": "dockerfile"
   },
   "deploy": {
-    "startCommand": "gunicorn --worker-class gevent --workers 1 --bind 0.0.0.0:$PORT --timeout 120 app:app",
+    "numReplicas": 1,
+    "startCommand": "gunicorn --worker-class gevent --workers 4 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - app:app",
     "restartPolicyMaxRetries": 5,
     "healthchecks": {
       "enabled": true,
-      "cpu": 25,
-      "memory": 256
+      "cpu": 50,
+      "memory": 512
     }
   },
   "variables": {

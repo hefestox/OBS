@@ -22,6 +22,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Environment
 .env
@@ -35,6 +37,8 @@ wheels/
 *.swo
 *~
 .DS_Store
+.project
+.pydevproject
 
 # Logs
 logs/
@@ -51,9 +55,19 @@ data/
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # Railway
 .railway/
+*.railway
 
-# Docker
-.dockerignore
+# Node (se tiver)
+node_modules/
+npm-debug.log
+
+# Outros
+.git
+.gitignore
+.github/
